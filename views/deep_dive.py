@@ -1,18 +1,26 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
+from io import BytesIO
 
 from ui.helpers import h
-from io import BytesIO
-from datetime import datetime
 from openpyxl.styles import Font
 from openpyxl.formatting.rule import ColorScaleRule
+
+
+# ==================================================
+# PATH CONFIG (CLOUD SAFE)
+# ==================================================
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "customer_amount_layer_clean.xlsx"
+
 
 # -----------------------------
 # LOAD DATA
 # -----------------------------
 @st.cache_data
 def load_data():
-    return pd.read_excel("customer_amount_layer_clean.xlsx")
+    return pd.read_excel(DATA_PATH)
 
 
 # -----------------------------
@@ -32,7 +40,7 @@ def render_deep_dive(controls):
     month = controls["month"]
     scenario = controls["scenario"]
 
-    # Scenario‑aware defaults
+    # Scenario-aware defaults
     if scenario == "ACT":
         default_metrics = [
             f"{month}_AGM%",
@@ -51,7 +59,7 @@ def render_deep_dive(controls):
     # -----------------------------
     customers = st.multiselect(
         "Select Customers",
-        sorted(df["CUSTOMER MERGE"].unique()),
+        sorted(df["CUSTOMER MERGE"].dropna().unique()),
         help=h("customer")
     )
 
@@ -73,7 +81,7 @@ def render_deep_dive(controls):
     metrics = st.multiselect(
         "Select Metrics",
         numeric_cols,
-        default=[c for c in default_metrics if c in numeric_cols],
+        default=[c for c in default_metrics if c in numeric_cols]
     )
 
     if not metrics:
@@ -87,12 +95,8 @@ def render_deep_dive(controls):
     # -----------------------------
     view_df = df[["CUSTOMER MERGE"] + metrics].copy()
 
-    # Numeric cleanup (THIS fixes ugly numbers)
     for col in metrics:
-        if col.endswith("%") or "GAP" in col or "YoY" in col:
-            view_df[col] = pd.to_numeric(view_df[col], errors="coerce").round(1)
-        elif col.endswith("_TN") or col.endswith("_Units"):
-            view_df[col] = pd.to_numeric(view_df[col], errors="coerce").round(1)
+        view_df[col] = pd.to_numeric(view_df[col], errors="coerce").round(1)
 
     # -----------------------------
     # RESULT TABLE
@@ -188,5 +192,3 @@ def render_deep_dive(controls):
         file_name=f"deep_dive_{scenario}_{month}_{len(customers)}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-import pandas as pd
-

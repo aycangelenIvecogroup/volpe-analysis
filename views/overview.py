@@ -1,12 +1,20 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
-from ui.helpers import explain_overview, h
+from ui.helpers import explain_overview
+
+
+# ==================================================
+# PATH CONFIG (CLOUD SAFE)
+# ==================================================
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "customer_amount_layer_clean.xlsx"
 
 
 @st.cache_data
 def load_data():
-    return pd.read_excel("customer_amount_layer_clean.xlsx")
+    return pd.read_excel(DATA_PATH)
 
 
 def render_overview(controls):
@@ -73,13 +81,12 @@ def render_overview(controls):
 
     view_df = df[cols].copy()
 
-    # numeric + rounding
     for c in cols:
         if c != "CUSTOMER MERGE":
             view_df[c] = pd.to_numeric(view_df[c], errors="coerce").round(1)
 
     # -----------------------------
-    # RISK LOGIC (ONLY IF COVERAGE)
+    # RISK LOGIC
     # -----------------------------
     if coverage_col:
         def compute_risk(x):
@@ -116,16 +123,11 @@ def render_overview(controls):
     if gap_col:
         fmt[gap_col] = "{:.1f}"
 
-    styled_df = (
+    st.dataframe(
         view_df
         .style
         .apply(color_row, axis=1)
-        .format(fmt)
-    )
-
-    st.dataframe(
-        styled_df,
-        width="stretch",
+        .format(fmt),
         height=520
     )
 

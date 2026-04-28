@@ -1,8 +1,14 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from datetime import datetime
-from openpyxl.styles import Font
+from pathlib import Path
+
+
+# ==================================================
+# PATH CONFIG (CLOUD SAFE)
+# ==================================================
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "customer_amount_layer_clean.xlsx"
 
 
 # -----------------------------
@@ -12,9 +18,9 @@ def fmt_amount(x):
     if pd.isna(x):
         return "–"
     if abs(x) >= 1_000_000:
-        return f"{x/1_000_000:.1f} M"
+        return f"{x / 1_000_000:.1f} M"
     elif abs(x) >= 1_000:
-        return f"{x/1_000:.0f} K"
+        return f"{x / 1_000:.0f} K"
     else:
         return f"{x:,.0f}"
 
@@ -24,8 +30,7 @@ def fmt_amount(x):
 # -----------------------------
 @st.cache_data
 def load_data():
-    # ZATEN ÇALIŞAN CLEAN DOSYA
-    return pd.read_excel("customer_amount_layer_clean.xlsx")
+    return pd.read_excel(DATA_PATH)
 
 
 # -----------------------------
@@ -115,32 +120,39 @@ def render_customer_detail(controls):
     tn_bdg = row.get("B26_TN")
     agm_bdg = row.get("B26_AGM%")
 
-    agm_gap = agm_actual - agm_bdg if pd.notna(agm_actual) and pd.notna(agm_bdg) else None
-    tn_gap = tn_bdg - tn_actual if pd.notna(tn_bdg) and pd.notna(tn_actual) else None
+    agm_gap = (
+        agm_actual - agm_bdg
+        if pd.notna(agm_actual) and pd.notna(agm_bdg)
+        else None
+    )
+    tn_gap = (
+        tn_bdg - tn_actual
+        if pd.notna(tn_bdg) and pd.notna(tn_actual)
+        else None
+    )
 
     coverage = row.get(coverage_col) if coverage_col else None
 
     # -----------------------------
-    # KPI CARDS (6)
+    # KPI CARDS
     # -----------------------------
     k1, k2, k3, k4, k5, k6 = st.columns(6)
 
     k1.metric("AGM %", f"{agm_actual:.1f} %" if pd.notna(agm_actual) else "–")
     k2.metric("AGM % (Target)", f"{agm_bdg:.1f} %" if pd.notna(agm_bdg) else "–")
     k3.metric("AGM Gap", f"{agm_gap:+.1f} pp" if agm_gap is not None else "–")
-
     k4.metric("Net Sales (TN)", fmt_amount(tn_actual))
     k5.metric("To Target (TN)", fmt_amount(tn_gap))
 
-    if coverage_col:
-        k6.metric("Coverage", f"{coverage:.1f} %" if pd.notna(coverage) else "–")
-    else:
-        k6.metric("Coverage", "–")
+    k6.metric(
+        "Coverage",
+        f"{coverage:.1f} %" if pd.notna(coverage) else "–"
+    )
 
     st.divider()
 
     # -----------------------------
-    # UNDERLYING DATA (FORMATTED)
+    # UNDERLYING DATA
     # -----------------------------
     st.subheader("📄 Underlying Data")
 
@@ -151,12 +163,9 @@ def render_customer_detail(controls):
             return f"{val:.1f}"
         if "TN" in col or "Units" in col:
             return fmt_amount(val)
-        return f"{val:,.1f}" if isinstance(val, (int, float)) else val
+        return val
 
-    formatted = {
-        k: format_value(k, v)
-        for k, v in row.items()
-    }
+    formatted = {k: format_value(k, v) for k, v in row.items()}
 
     underlying_df = (
         pd.DataFrame.from_dict(formatted, orient="index", columns=["Value"])
