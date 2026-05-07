@@ -112,16 +112,24 @@ def render_comparison():
     # ==================================================
     scenarios = df["SCENARIO"].unique()
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         scenario_A = st.selectbox("Scenario A", scenarios)
 
     with col2:
         scenario_B = st.selectbox("Scenario B", scenarios)
+    with col3:
+        scenario_C = st.selectbox(
+            "Optional Scenario (Reference)",
+            ["None"] + list(scenarios)
+        )
 
-    st.caption(f"A = {scenario_A} | B = {scenario_B}")
 
+    if scenario_C != "None":
+        st.caption(f"A = {scenario_A} | B = {scenario_B} | Reference = {scenario_C}")
+    else:
+        st.caption(f"A = {scenario_A} | B = {scenario_B}")
     # ==================================================
     # METRICS (✅ USER FRIENDLY)
     # ==================================================
@@ -129,6 +137,7 @@ def render_comparison():
         "Units": "units",
         "Turnover (TN)": "tn",
         "Gross Margin (AGM)": "agm",
+        "Cost (COGS)": "cogs", 
         "Standard Margin (SGM)": "sgm"
     }
 
@@ -175,6 +184,15 @@ def render_comparison():
                 pivot[f"Δ {m.upper()} (A-B)"] / pivot[col_B]
             ).replace([float("inf"), -float("inf")], 0) * 100
 
+
+    # ✅ ✅ BURAYA KOY
+    if scenario_C != "None":
+        for m in metrics:
+            col_C = f"{scenario_C}_{m}"
+            if col_C in pivot.columns:
+                pass  # zaten var, dokunma
+
+
     # ✅ MARGIN
     if "agm" in metrics and "tn" in metrics:
 
@@ -219,7 +237,38 @@ def render_comparison():
 
     # append
     pivot = pd.concat([pivot, total_df], ignore_index=True)
+        # ✅ C scenario’yu da ekle
+    
 
+    ordered_cols = group_cols.copy()
+
+    for m in metrics:
+        col_A = f"{scenario_A}_{m}"
+        col_B = f"{scenario_B}_{m}"
+        col_C = f"{scenario_C}_{m}"
+
+        if col_A in pivot.columns:
+            ordered_cols.append(col_A)
+
+        if col_B in pivot.columns:
+            ordered_cols.append(col_B)
+
+        if scenario_C != "None" and col_C in pivot.columns:
+            ordered_cols.append(col_C)
+
+        delta_col = f"Δ {m.upper()} (A-B)"
+        pct_col = f"%Δ {m.upper()}"
+
+        if delta_col in pivot.columns:
+            ordered_cols.append(delta_col)
+
+        if pct_col in pivot.columns:
+            ordered_cols.append(pct_col)
+
+    # ✅✅ EN KRİTİK SATIR → SADECE BURADA OLACAK
+    # ✅ duplicate kolonları temizle
+    ordered_cols = list(dict.fromkeys(ordered_cols))
+    pivot = pivot[ordered_cols]
    # ==================================================
     # DISPLAY
     # ==================================================
@@ -229,11 +278,23 @@ def render_comparison():
         if row.iloc[0] == "TOTAL":
             return ["background-color: #d9edf7"] * len(row)
         return [""] * len(row)
+    
+    def highlight_delta(val):
+        try:
+            if float(val) > 0:
+                return "color: green"
+            elif float(val) < 0:
+                return "color: red"
+        except:
+            return ""
+        return ""
 
-    st.dataframe(
-        pivot.style.apply(highlight_total, axis=1),
-        use_container_width=True
-    )
+
+
+
+
+    st.dataframe(pivot, use_container_width=True)
+
 
     st.caption("""
     Δ = Difference between Scenario A and B  

@@ -7,6 +7,7 @@ from views.deep_dive import render_deep_dive
 from views.problems import render_problems
 from views.advanced_analysis import render_advanced_analysis
 from views.comparison import render_comparison
+from views.unit_bridge import render_unit_bridge
 
 # ==================================================
 # PAGE CONFIG
@@ -45,3 +46,5 @@ elif page == "Comparison":
 
 elif page == "Deep Dive":
     render_deep_dive(controls)
+elif page == "Unit Bridge":
+    render_unit_bridge()
