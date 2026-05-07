@@ -9,7 +9,7 @@ def render_sidebar():
     # ----------------------------
     page = st.sidebar.radio(
     "Navigation",
-    ["Overview", "Customer Detail", "Deep Dive", "Advanced Analysis", "Problems"]
+    ["Overview", "Customer Detail", "Deep Dive", "Advanced Analysis", "Problems","Comparison"]
 )
     st.sidebar.markdown("---")
 

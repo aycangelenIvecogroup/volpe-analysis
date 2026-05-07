@@ -6,6 +6,8 @@ from views.customer_detail import render_customer_detail
 from views.deep_dive import render_deep_dive
 from views.problems import render_problems
 from views.advanced_analysis import render_advanced_analysis
+from views.comparison import render_comparison
+
 # ==================================================
 # PAGE CONFIG
 # ==================================================
@@ -37,6 +39,9 @@ elif page == "Problems":
     
 elif page == "Advanced Analysis":
     render_advanced_analysis()
+
+elif page == "Comparison":
+    render_comparison()
 
 elif page == "Deep Dive":
     render_deep_dive(controls)
