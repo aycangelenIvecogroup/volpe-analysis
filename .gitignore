@@ -1,7 +1,5 @@
 # data files
 
-*.xls
-*.csv
 
 # python cache
 __pycache__/

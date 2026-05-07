@@ -6,8 +6,7 @@ from pathlib import Path
 # ==================================================
 # CONFIG
 # ==================================================
-BASE_PATH = Path(r"C:\Users\v47012b\OneDrive - Iveco Group\Documenti\volpe_analysis\data\raw")
-
+BASE_PATH = Path("data/raw")
 
 # ==================================================
 # CLEAN COLUMN NAMES
