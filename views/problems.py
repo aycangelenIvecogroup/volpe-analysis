@@ -102,9 +102,12 @@ def render_problems():
     # --------------------------------------------------
     df["Δ TN (MAR - FEB)"] = df["MAR_TN"] - df["FEB_TN"]
     df["Δ COST (MAR - FEB)"] = df["MAR_COST"] - df["FEB_COST"]
+    df["Δ PRICE (MAR - FEB)"] = df["MAR_PRICE"] - df["FEB_PRICE"]
 
     df["Δ TN (MAR - BDG)"] = df["MAR_TN"] - df["BDG_TN"]
     df["Δ COST (MAR - BDG)"] = df["MAR_COST"] - df["BDG_COST"]
+    df["Δ PRICE (MAR - BDG)"] = df["MAR_PRICE"] - df["BDG_PRICE"]
+
 
     # --------------------------------------------------
     # FILTERS
@@ -125,6 +128,7 @@ def render_problems():
         "MAR_TN", "MAR_PRICE", "MAR_COST",
         "BDG_PRICE", "BDG_COST",
         "Δ COST (MAR - BDG)",
+        "Δ PRICE (MAR - BDG)",
     ]
 
     display_df = df[default_columns].sort_values(
