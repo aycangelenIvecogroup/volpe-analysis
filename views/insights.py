@@ -541,14 +541,10 @@ def render_full_diagnostic():
     ({act_cost:.2f} - {bdg_cost:.2f}) × {act_units:.0f} = **{-cost_effect:.0f} € impact**
 
     ---
-    ✅ Total explained change:
+    ✅ Total explained change: volume_effect + cost_effect + vce_effect + var_effect
     {volume_effect + cost_effect + vce_effect + var_effect:.0f} €
 
-    ✅ Actual difference:
+    ✅ Actual difference:act_agm - bdg_agm
     **{act_agm - bdg_agm:.0f} €**
     """)
 
-    st.markdown(f"""
-    ✅ Reconciliation check:
-    **{(act_agm - bdg_agm) - (volume_effect + cost_effect + vce_effect + var_effect):.6f}**
-    """)
