@@ -8,6 +8,7 @@ from views.problems import render_problems
 from views.advanced_analysis import render_advanced_analysis
 from views.comparison import render_comparison
 from views.unit_bridge import render_unit_bridge
+from views.insights import render_full_diagnostic
 
 # ==================================================
 # PAGE CONFIG
@@ -48,3 +49,6 @@ elif page == "Deep Dive":
     render_deep_dive(controls)
 elif page == "Unit Bridge":
     render_unit_bridge()
+elif page == "insights":
+    render_full_diagnostic()
+
