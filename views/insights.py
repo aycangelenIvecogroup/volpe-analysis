@@ -268,7 +268,8 @@ def render_full_diagnostic():
         if (col, scen) in pivot.columns:
             return pivot[(col, scen)]
         else:
-            return 0
+            return pd.Series(0, index=pd.pivot.index)
+
 
     # build final table
     product_table = pd.DataFrame({
