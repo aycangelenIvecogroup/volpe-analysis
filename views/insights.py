@@ -532,19 +532,19 @@ def render_full_diagnostic():
 
     ---
 
-    👉 Volume impact:
+    👉 Volume impact:(act unit-bdg unit)x(bdg price): 
     ({act_units:.0f} - {bdg_units:.0f}) × {bdg_price:.2f} = **{volume_effect:.0f} €**
 
    
 
-    👉 Cost impact:
+    👉 Cost impact: whatever you want i can add now something something
     ({act_cost:.2f} - {bdg_cost:.2f}) × {act_units:.0f} = **{-cost_effect:.0f} € impact**
 
     ---
-    ✅ Total explained change: volume_effect + cost_effect + vce_effect + var_effect
-    {volume_effect + cost_effect + vce_effect + var_effect:.0f} €
+    ✅ Total explained change: volume_effect + cost_effect + vce_effect + var_effect: 
+    **{volume_effect + cost_effect + vce_effect + var_effect:.0f} €**
 
-    ✅ Actual difference:act_agm - bdg_agm
+    ✅ Actual difference:act_agm - bdg_agm: 
     **{act_agm - bdg_agm:.0f} €**
     """)
 
