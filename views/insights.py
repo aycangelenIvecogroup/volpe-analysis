@@ -268,7 +268,7 @@ def render_full_diagnostic():
         if (col, scen) in pivot.columns:
             return pivot[(col, scen)]
         else:
-            return pd.Series(0, index=pd.pivot.index)
+            return pd.Series(0, index=pivot.index)
 
 
     # build final table
