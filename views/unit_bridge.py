@@ -219,9 +219,29 @@ def render_unit_bridge():
             return "color: red"
         return ""
 
+    def color_delta_row(row, df_ref):
+        val = row["Δ"]
+        metric = df_ref.loc[row.name, "Metric"]
+
+        positive_good = True
+
+        if metric in ["COGS", "VCE"]:
+            positive_good = False
+        elif metric == "VAR":
+            positive_good = False
+
+        if val > 0:
+            return ["color: green" if positive_good else "color: red"]
+        elif val < 0:
+            return ["color: red" if positive_good else "color: green"]
+        else:
+            return [""]
+
+
     styled = result.style.apply(
-        lambda col: [color_delta(v) for v in col] if col.name == "Δ" else ["" for _ in col],
-        axis=0
+        lambda row: color_delta_row(row, result),
+        axis=1,
+        subset=["Δ"]
     )
 
     st.dataframe(styled, use_container_width=True)
@@ -284,9 +304,14 @@ def render_unit_bridge():
         })
 
     totals_df = pd.DataFrame(totals)
+    totals_styled = totals_df.style.apply(
+        lambda row: color_delta_row(row, totals_df),
+        axis=1,
+        subset=["Δ"]
+    )
 
     st.dataframe(
-        totals_df.style.map(color_delta, subset=["Δ"]),
+        totals_styled,
         use_container_width=True
     )
     st.caption("Δ = ACT - BDG")

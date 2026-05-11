@@ -311,19 +311,58 @@ def render_full_diagnostic():
     product_table["Δ AGM %"] = product_table["ACT AGM %"] - product_table["BDG AGM %"]
     product_table["Δ SGM %"] = product_table["ACT SGM %"] - product_table["BDG SGM %"]
 
-    product_table = product_table.sort_values("Δ AGM %", ascending=True)
+    # ====================================
+    # UNIT BASED DRIVER COLUMNS ✅
+    # ====================================
 
-    st.dataframe(
-        product_table.style.format({
-            "ACT AGM %": "{:.1%}",
-            "BDG AGM %": "{:.1%}",
-            "ACT SGM %": "{:.1%}",
-            "BDG SGM %": "{:.1%}",
-            "Δ AGM %": "{:.1%}",
-            "Δ SGM %": "{:.1%}",
-        }),
-        use_container_width=True
-    )    
+    # unit price
+    product_table["ACT Unit Price"] = product_table["ACT TN"] / product_table["ACT Units"].replace(0, 1)
+    product_table["BDG Unit Price"] = product_table["BDG TN"] / product_table["BDG Units"].replace(0, 1)
+
+    # unit cost
+    product_table["ACT Unit Cost"] = product_table["ACT COGS"] / product_table["ACT Units"].replace(0, 1)
+    product_table["BDG Unit Cost"] = product_table["BDG COGS"] / product_table["BDG Units"].replace(0, 1)
+
+    # deltas
+    product_table["Δ Price"] = product_table["ACT Unit Price"] - product_table["BDG Unit Price"]
+    product_table["Δ Cost"] = product_table["ACT Unit Cost"] - product_table["BDG Unit Cost"]
+
+    # margin pressure (MOST IMPORTANT 🔥)
+    product_table["Margin Pressure"] = product_table["Δ Price"] - product_table["Δ Cost"]
+
+    product_table = product_table.sort_values("Δ AGM %", ascending=True)
+    def highlight_problem(val):
+        if val < 0:
+            return "background-color: #ffcccc"   # kırmızı
+        elif val > 0:
+            return "background-color: #ccffcc"   # yeşil
+        return ""
+    styled_table = product_table.style.format({
+        "ACT Units": "{:,.0f}",
+        "BDG Units": "{:,.0f}",
+
+        "ACT TN": "{:,.0f}",
+        "BDG TN": "{:,.0f}",
+        "ACT COGS": "{:,.0f}",
+        "BDG COGS": "{:,.0f}",
+        "ACT AGM": "{:,.0f}",
+        "BDG AGM": "{:,.0f}",
+
+        "ACT AGM %": "{:.1%}",
+        "BDG AGM %": "{:.1%}",
+
+        "Δ AGM %": "{:.1%}",
+
+        "Δ Price": "{:.1f}",
+        "Δ Cost": "{:.1f}",
+        "Margin Pressure": "{:.1f}",
+
+    }).apply(
+        lambda col: [highlight_problem(v) for v in col] if col.name == "Margin Pressure" else [""] * len(col),
+        axis=0
+    )
+
+    st.dataframe(styled_table, use_container_width=True)
     
     # ===============================
     # PN SELECTOR (RIGHT PLACE ✅)
@@ -415,7 +454,14 @@ def render_full_diagnostic():
         axis=0
     )
 
-    st.dataframe(styled, use_container_width=True)
+    st.dataframe(
+        styled.format({
+            "ACT": "{:.2f}",
+            "BDG": "{:.2f}",
+            "Δ": "{:.2f}"
+        }),
+        use_container_width=True
+    )
 
 
     # ===============================
@@ -473,7 +519,7 @@ def render_full_diagnostic():
     **{(act_price-bdg_price) - ((act_cost-bdg_cost)+(act_vce-bdg_vce)+(act_agm-bdg_agm)+(act_var-bdg_var)):.6f}**
 
     """)
-   
+    
     # ==================================================
     # UNIT-BASED WATERFALL ✅ (DOĞRU VERSİYON)
     # ==================================================
@@ -483,8 +529,7 @@ def render_full_diagnostic():
     act_units = df_pn_group.loc["MARCH", "units"]
     bdg_units = df_pn_group.loc["BDG", "units"]
 
-    vce_effect = (act_vce - bdg_vce) * act_units
-    var_effect = (act_var - bdg_var) * act_units
+    
 
 
     act_price = unit_df.loc["MARCH", "Unit Price"]
@@ -520,31 +565,59 @@ def render_full_diagnostic():
             act_agm
         ]
     })
+    main_driver = min(
+        [volume_effect, cost_effect, vce_effect, var_effect],
+        key=lambda x: x
+    )
+
+    driver_name = {
+        volume_effect: "Volume",
+        cost_effect: "Cost",
+        vce_effect: "VCE",
+        var_effect: "Variance"
+    }[main_driver]
+
+    st.markdown(f"""
+    ### 🧠 Main Driver
+
+    👉 The biggest negative impact comes from: **{driver_name}**  
+    Impact: **{main_driver:.0f} €**
+    """)
 
     st.bar_chart(waterfall_df.set_index("Step"))
 
     st.markdown(f"""
     ### 🔍 What is driving the change?
 
-    - Units: {bdg_units:.0f} → {act_units:.0f}
-    - Price: {bdg_price:.2f} → {act_price:.2f}
-    - Cost: {bdg_cost:.2f} → {act_cost:.2f}
+    We started from budgeted AGM:
+    → **{bdg_agm:.0f} €**
+
+    Then the following effects occurred:
 
     ---
 
-    👉 Volume impact:(act unit-bdg unit)x(bdg price): 
-    ({act_units:.0f} - {bdg_units:.0f}) × {bdg_price:.2f} = **{volume_effect:.0f} €**
+    👉 Volume impact (change in quantity sold):
+    ({act_units:.0f} - {bdg_units:.0f}) × {bdg_price:.2f}  
+    = **{volume_effect:.0f} €**
 
-   
+    👉 Cost impact (increase/decrease in unit cost):
+    ({act_cost:.2f} - {bdg_cost:.2f}) × {act_units:.0f}  
+    = **{-cost_effect:.0f} €**
 
-    👉 Cost impact: whatever you want i can add now something something
-    ({act_cost:.2f} - {bdg_cost:.2f}) × {act_units:.0f} = **{-cost_effect:.0f} € impact**
+    👉 VCE impact (variable cost effect):
+    ({act_vce:.2f} - {bdg_vce:.2f}) × {act_units:.0f}  
+    = **{vce_effect:.0f} €**
+
+    👉 Variance impact (other residual effects):
+    ({act_var:.2f} - {bdg_var:.2f}) × {act_units:.0f}  
+    = **{var_effect:.0f} €**
 
     ---
-    ✅ Total explained change: volume_effect + cost_effect + vce_effect + var_effect: 
+
+    ✅ Total explained change:
     **{volume_effect + cost_effect + vce_effect + var_effect:.0f} €**
 
-    ✅ Actual difference:act_agm - bdg_agm: 
+    ✅ Actual difference:
     **{act_agm - bdg_agm:.0f} €**
     """)
 
