@@ -1,14 +1,15 @@
 import streamlit as st
 
 from ui.sidebar import render_sidebar
-from views.overview import render_overview
-from views.customer_detail import render_customer_detail
-from views.deep_dive import render_deep_dive
+from views.customer_analysis import render_customer_analysis
 from views.problems import render_problems
 from views.advanced_analysis import render_advanced_analysis
 from views.comparison import render_comparison
 from views.unit_bridge import render_unit_bridge
 from views.insights import render_full_diagnostic
+from views.product_analysis import render_product_analysis
+
+
 
 # ==================================================
 # PAGE CONFIG
@@ -30,11 +31,9 @@ page, controls = render_sidebar()
 # PAGE ROUTING
 # ==================================================
 
-if page == "Overview":
-    render_overview(controls)
+if page == "Customer Analysis":
+    render_customer_analysis(controls)
 
-elif page == "Customer Detail":
-    render_customer_detail(controls)
 
 elif page == "Problems":
     render_problems()
@@ -45,10 +44,11 @@ elif page == "Advanced Analysis":
 elif page == "Comparison":
     render_comparison()
 
-elif page == "Deep Dive":
-    render_deep_dive(controls)
+
 elif page == "Unit Bridge":
     render_unit_bridge()
+elif page == "Product Analysis":
+    render_product_analysis()
 elif page == "insights":
     render_full_diagnostic()
 
