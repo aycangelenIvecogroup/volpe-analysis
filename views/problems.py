@@ -214,7 +214,6 @@ def render_problems():
         else:
             return f"€ {x:.0f}"
 
-
     def style_table(df):
 
         format_dict = {}

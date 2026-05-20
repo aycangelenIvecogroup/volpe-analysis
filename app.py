@@ -23,6 +23,22 @@ st.set_page_config(
 )
 
 # ==================================================
+# ✅ 🔐 PASSWORD HERE
+# ==================================================
+password = st.text_input("🔐 Enter access password", type="password")
+
+
+if password:
+    if password == "Volpe2026":
+        st.success("Access granted")
+    else:
+        st.error("Wrong password")
+        st.stop()
+else:
+    st.stop()
+
+
+# ==================================================
 # SIDEBAR (ROUTER + CONTROLS)
 # ==================================================
 
