@@ -1,81 +1,59 @@
 import streamlit as st
+st.markdown("""
+<style>
+
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #ffe4e6, #fbcfe8);
+}
 
 
+div[role="radiogroup"] > label {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+div[role="radiogroup"] > label:hover {
+    background-color: #e0e7ff;
+    cursor: pointer;
+}
+
+div[role="radiogroup"] label[data-checked="true"] {
+    background-color: #6366f1 !important;
+    color: white !important;
+    font-weight: 600;
+}
+</style>
+""", unsafe_allow_html=True)
 def render_sidebar():
-    st.sidebar.title("🎛️ Control Panel")
+    with st.sidebar:
 
-    # ----------------------------
-    # NAVIGATION
-    # ----------------------------
-    page = st.sidebar.radio(
-    "Navigation",
-    ["Customer Analysis", "Advanced Analysis", "Problems","Comparison", "Unit Bridge","insights", "Product Analysis"]
-)
-    st.sidebar.markdown("---")
+        st.markdown(
+            "<h2 style='text-align: center;'>🎛️ Control Panel 😺</h2>",
+            unsafe_allow_html=True
+        )
 
-    # ----------------------------
-    # SCENARIO
-    # ----------------------------
-    scenario = st.sidebar.selectbox(
-        "Scenario",
-        ["ACT", "AGM25", "B26", "FCST26"]
-    )
+        st.markdown("---")
 
-    st.sidebar.markdown("---")
+        page = st.radio(
+            "",
+            [
+                "🏠 Dashboard",
+                "👥 Customer Analysis",
+                "💡 Insights",
+                "📦 Product Analysis",
+                "⚖️ Comparison",
+                "📊 Unit Bridge",
+                "⚠️ Problems",
+            ]
+        )
 
-    # ----------------------------
-    # TIME
-    # ----------------------------
-    month = st.sidebar.selectbox(
-        "Month",
-        ["March", "February"]
-    )
+        st.markdown("---")
 
-    st.sidebar.markdown("---")
+        st.markdown(
+            "<p style='text-align:center; font-size:12px; color:gray;'>Made by ❤️ Aycan Gelen</p>",
+            unsafe_allow_html=True
+        )
 
-    # ----------------------------
-    # RANKING
-    # ----------------------------
-    st.sidebar.markdown("### Ranking Focus")
-
-    rank_mode = st.sidebar.radio(
-        "Rank customers by",
-        [
-            "Sales Execution (Coverage)",
-            "Margin Deviation (AGM Gap)"
-        ]
-    )
-
-    st.sidebar.markdown("---")
-
-    # ----------------------------
-    # RISK
-    # ----------------------------
-    st.sidebar.markdown("### Risk Definition (Coverage %)")
-
-    critical_below = st.sidebar.number_input(
-        "CRITICAL if coverage below",
-        min_value=0,
-        max_value=100,
-        value=70,
-        step=1
-    )
-
-    warning_below = st.sidebar.number_input(
-        "WARNING if coverage below",
-        min_value=critical_below + 1,
-        max_value=100,
-        value=90,
-        step=1
-    )
-
-    
-    controls = {
-        "scenario": scenario,
-        "month": month,
-        "rank_mode": rank_mode,
-        "critical_below": critical_below,
-        "warning_below": warning_below,
-    }
-
-    return page, controls
+    return page

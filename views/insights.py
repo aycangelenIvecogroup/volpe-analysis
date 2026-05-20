@@ -120,11 +120,15 @@ def build_explanation(m):
     strategy_gap = bdg["agm"] - fy["agm"]
     execution_gap = act["agm"] - bdg["agm"]
 
+    # ✅ BURADA hesapla (string dışında!)
+    delta_strategy = (bdg['margin'] - fy['margin']) * 100
+    delta_execution = (act['margin'] - bdg['margin']) * 100
+
     explanation = f"""
 ### 📌 STRATEGY VS EXECUTION
 
-- Strategy (BDG - FY25)(agm): **{strategy_gap:.0f} €**
-- Execution (ACT - BDG)(agm): **{execution_gap:.0f} €**
+- Strategy (AGM): **{strategy_gap:,.0f} €**
+- Execution (AGM): **{execution_gap:,.0f} €**
 
 ---
 
@@ -132,54 +136,66 @@ def build_explanation(m):
 
 ## 🟦 1. STRATEGY (FY25 → BDG)
 
-Margin(%agm):
+**Margin:**
 - {fy['margin']*100:.1f}% → {bdg['margin']*100:.1f}%
-- Δ = {(bdg['margin']-fy['margin'])*100:.1f} pp
+- Δ **{delta_strategy:+.1f} pp**
 
-TN:
-- {fy['tn']:.0f} → {bdg['tn']:.0f} (€ Δ {bdg['tn']-fy['tn']:.0f})
+**TN:**
+- {fy['tn']:,.0f} € → {bdg['tn']:,.0f} €
+- Δ **{bdg['tn'] - fy['tn']:+,.0f} €**
 
-Cogs:
-- {fy['cogs']:.0f} → {bdg['cogs']:.0f} (€ Δ {bdg['cogs']-fy['cogs']:.0f})
+**COGS:**
+- {fy['cogs']:,.0f} € → {bdg['cogs']:,.0f} €
+- Δ **{bdg['cogs'] - fy['cogs']:+,.0f} €**
 
 ---
 
-## 🟥 2. EXECUTION (BDG → ACTUAL)
+## 🟥 2. EXECUTION (BDG → ACT)
 
-Margin(%agm):
+**Margin:**
 - {bdg['margin']*100:.1f}% → {act['margin']*100:.1f}%
-- Δ = {(act['margin']-bdg['margin'])*100:.1f} pp
+- Δ **{delta_execution:+.1f} pp**
 
-TN:
-- {bdg['tn']:.0f} → {act['tn']:.0f} (€ Δ {act['tn']-bdg['tn']:.0f})
+**TN:**
+- {bdg['tn']:,.0f} € → {act['tn']:,.0f} €
+- Δ **{act['tn'] - bdg['tn']:+,.0f} €**
 
-Cogs:
-- {bdg['cogs']:.0f} → {act['cogs']:.0f} (€ Δ {act['cogs']-bdg['cogs']:.0f})
+**COGS:**
+- {bdg['cogs']:,.0f} € → {act['cogs']:,.0f} €
+- Δ **{act['cogs'] - bdg['cogs']:+,.0f} €**
 
-
+---
 
 ## 🟨 3. UNIT ECONOMICS
 
-Unit Price:
-- ACT = {act['tn']:.0f} / {act['units']:.0f} = {act['unit_price']:.2f}
-- BDG = {bdg['tn']:.0f} / {bdg['units']:.0f} = {bdg['unit_price']:.2f}
+**Unit Price:**
+- ACT: **{act['unit_price']:,.2f} €/unit**  
+  ({act['tn']:,.0f} € / {act['units']:,.0f})
 
-Unit Cost:
-- ACT = {act['cogs']:.0f} / {act['units']:.0f} = {act['unit_cost']:.2f}
-- BDG = {bdg['cogs']:.0f} / {bdg['units']:.0f} = {bdg['unit_cost']:.2f}
+- BDG: **{bdg['unit_price']:,.2f} €/unit**  
+  ({bdg['tn']:,.0f} € / {bdg['units']:,.0f})
+
+**Unit Cost:**
+- ACT: **{act['unit_cost']:,.2f} €/unit**  
+  ({act['cogs']:,.0f} € / {act['units']:,.0f})
+
+- BDG: **{bdg['unit_cost']:,.2f} €/unit**  
+  ({bdg['cogs']:,.0f} € / {bdg['units']:,.0f})
 
 ---
 
 ## 🟥 ROOT CAUSE
 """
 
+
     # ROOT CAUSE TAGS
     if act["unit_cost"] > bdg["unit_cost"]:
-        explanation += "- Cost inflation (unit cost increased)\n"
+        explanation += "- 🔺 Cost inflation (unit cost increased)\n"
     if act["unit_price"] < bdg["unit_price"]:
-        explanation += "- Pricing pressure (unit price decreased)\n"
+        explanation += "- 🔻 Pricing pressure (unit price decreased)\n"
     if act["units"] >= bdg["units"]:
-        explanation += "- Volume not driving the issue\n"
+        explanation += "- 📦 Volume is not the main issue\n"
+
 
     explanation += """
 
@@ -187,8 +203,8 @@ Unit Cost:
 
 ## ✅ CONCLUSION
 
-Variance fully explained by cost vs TN imbalance,
-validated through unit-level calculations.
+Variance is mainly driven by **cost vs pricing imbalance**,  
+validated at unit level.
 
 """
 
@@ -225,7 +241,19 @@ def render_full_diagnostic():
     df_group = df_group.reindex(["FY25", "BDG", "MARCH"]).fillna(0)
 
     st.subheader("📊 Scenario Overview")
-    st.dataframe(df_group, use_container_width=True)
+    
+    st.dataframe(
+        df_group.style.format({
+            "units": "{:,.0f}",
+            "tn": "{:,.0f} €",
+            "cogs": "{:,.0f} €",
+            "agm": "{:,.0f} €",
+            "vce": "{:,.0f} €",
+            "sgm": "{:,.0f} €",
+        }),
+        use_container_width=True
+    )
+
 
     # =========================
     # COMPARISON TABLE
@@ -241,14 +269,38 @@ def render_full_diagnostic():
     comp["Execution (ACT-BDG)"] = comp["ACT"] - comp["BDG"]
 
     st.subheader("📈 Strategy vs Execution")
-    st.dataframe(comp, use_container_width=True)
+    
+    st.dataframe(
+        comp.style.format({
+            "FY25": "{:,.0f} €",
+            "BDG": "{:,.0f} €",
+            "ACT": "{:,.0f} €",
+            "Strategy (BDG-FY25)": "{:,.0f} €",
+            "Execution (ACT-BDG)": "{:,.0f} €",
+        }),
+        use_container_width=True
+    )
+
 
     # =========================
     # EXPLANATION
     # =========================
     metrics = compute_metrics(df_group)
     explanation = build_explanation(metrics)
+    total_gap = df_group.loc["MARCH", "agm"] - df_group.loc["BDG", "agm"]
 
+    if total_gap < 0:
+        trend = "🔴 DECLINING"
+    else:
+        trend = "🟢 IMPROVING"
+
+    st.markdown(f"""
+    ## 📊 OVERALL RESULT
+
+    ### {trend}
+
+    ### Impact: **{total_gap:+,.0f} €**
+    """)
     st.markdown(explanation)
 
     # ==================================================
@@ -305,11 +357,11 @@ def render_full_diagnostic():
     product_table["ACT SGM %"] = product_table["ACT SGM"] / product_table["ACT TN"].replace(0, 1)
     product_table["BDG SGM %"] = product_table["BDG SGM"] / product_table["BDG TN"].replace(0, 1)
     # DELTA (çok önemli)
-    product_table["Δ AGM"] = product_table["ACT AGM"] - product_table["BDG AGM"]
-    product_table["Δ SGM"] = product_table["ACT SGM"] - product_table["BDG SGM"]
+    product_table["Δ AGM (€)"] = product_table["ACT AGM"] - product_table["BDG AGM"]
+    product_table["Δ SGM (€)"] = product_table["ACT SGM"] - product_table["BDG SGM"]
 
-    product_table["Δ AGM %"] = product_table["ACT AGM %"] - product_table["BDG AGM %"]
-    product_table["Δ SGM %"] = product_table["ACT SGM %"] - product_table["BDG SGM %"]
+    product_table["Δ AGM % pp"] = (product_table["ACT AGM %"] - product_table["BDG AGM %"])*100
+    product_table["Δ SGM % pp"] = (product_table["ACT SGM %"] - product_table["BDG SGM %"])*100
 
     # ====================================
     # UNIT BASED DRIVER COLUMNS ✅
@@ -330,37 +382,69 @@ def render_full_diagnostic():
     # margin pressure (MOST IMPORTANT 🔥)
     product_table["Margin Pressure"] = product_table["Δ Price"] - product_table["Δ Cost"]
 
-    product_table = product_table.sort_values("Δ AGM %", ascending=True)
-    def highlight_problem(val):
-        if val < 0:
-            return "background-color: #ffcccc"   # kırmızı
-        elif val > 0:
-            return "background-color: #ccffcc"   # yeşil
+    product_table = product_table.sort_values("Δ AGM % pp", ascending=True)
+    def highlight_all(val, col):
+
+        if col in ["Δ AGM (€)", "Δ SGM (€)", "Margin Pressure"]:
+            if val < 0:
+                return "color:red"
+            elif val > 0:
+                return "color:green"
+
+        if col in ["Δ AGM % pp", "Δ SGM % pp"]:
+            if val < 0:
+                return "color:red"
+            elif val > 0:
+                return "color:green"
+
         return ""
+
+
     styled_table = product_table.style.format({
+
         "ACT Units": "{:,.0f}",
         "BDG Units": "{:,.0f}",
 
-        "ACT TN": "{:,.0f}",
-        "BDG TN": "{:,.0f}",
-        "ACT COGS": "{:,.0f}",
-        "BDG COGS": "{:,.0f}",
-        "ACT AGM": "{:,.0f}",
-        "BDG AGM": "{:,.0f}",
+        "ACT TN": "{:,.0f} €",
+        "BDG TN": "{:,.0f} €",
+        "ACT COGS": "{:,.0f} €",
+        "BDG COGS": "{:,.0f} €",
+        "ACT AGM": "{:,.0f} €",
+        "BDG AGM": "{:,.0f} €",
+        "ACT SGM": "{:,.0f} €",
+        "BDG SGM": "{:,.0f} €",
 
-        "ACT AGM %": "{:.1%}",
-        "BDG AGM %": "{:.1%}",
+        "Δ AGM (€)": "{:+,.0f} €",
+        "Δ SGM (€)": "{:+,.0f} €",
 
-        "Δ AGM %": "{:.1%}",
+        
+        "Δ AGM % pp": "{:+.1f} pp",
+        "Δ SGM % pp": "{:+.1f} pp",
 
-        "Δ Price": "{:.1f}",
-        "Δ Cost": "{:.1f}",
-        "Margin Pressure": "{:.1f}",
+
+        "Δ Price": "{:+,.2f}",
+        "Δ Cost": "{:+,.2f}",
+        "Margin Pressure": "{:+,.2f}",
+
+        "ACT Unit Price": "{:,.2f}",
+        "BDG Unit Price": "{:,.2f}",
+        "ACT Unit Cost": "{:,.2f}",
+        "BDG Unit Cost": "{:,.2f}",
 
     }).apply(
-        lambda col: [highlight_problem(v) for v in col] if col.name == "Margin Pressure" else [""] * len(col),
-        axis=0
+        lambda row: [highlight_all(row[col], col) for col in row.index],
+        axis=1
     )
+    
+
+    def highlight_problem(val):
+        if val < 0:
+            return "background-color: #fee2e2"   # kırmızı
+        elif val > 0:
+            return "background-color: #dcfce7"   # yeşil
+        return ""
+    
+    
 
     st.dataframe(styled_table, use_container_width=True)
     
@@ -442,23 +526,53 @@ def render_full_diagnostic():
     # ===============================
     st.subheader(f"⚙️ Unit Economics detail: - {selected_pn}")
 
-    def color_delta(val):
+    def color_delta(val, metric):
+
+        # COGS ters renk
+        if metric == "Unit COGS":
+            if val > 0:
+                return "color: red"
+            elif val < 0:
+                return "color: green"
+            
+        if metric == "Unit Variance":
+            if val > 0:
+                return "color: red"
+            elif val < 0:
+                return "color: green"
+
+        # diğerleri normal
         if val > 0:
             return "color: green"
         elif val < 0:
             return "color: red"
-        return ""
 
-    styled = unit_result.style.apply(
-        lambda col: [color_delta(v) for v in col] if col.name == "Δ" else ["" for _ in col],
-        axis=0
-    )
+        return ""
+        
+    
+
+    def highlight_row(row):
+        styles = []
+
+        for col in row.index:
+            if col == "Δ":
+                styles.append(color_delta(row[col], row["Metric"]))
+            else:
+                styles.append("")
+
+        return styles
+
+
+    styled = unit_result.style.apply(highlight_row, axis=1)
+
 
     st.dataframe(
         styled.format({
-            "ACT": "{:.2f}",
-            "BDG": "{:.2f}",
-            "Δ": "{:.2f}"
+            
+            "ACT": "{:,.2f}",
+            "BDG": "{:,.2f}",
+            "Δ": "{:+,.2f}",
+
         }),
         use_container_width=True
     )

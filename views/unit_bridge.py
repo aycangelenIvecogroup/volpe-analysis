@@ -223,12 +223,19 @@ def render_unit_bridge():
         val = row["Δ"]
         metric = df_ref.loc[row.name, "Metric"]
 
-        positive_good = True
+        positive_good_map = {
+            "Unit Price": True,
+            "COGS": False,
+            "VCE": True,
+            "VAR": False,
+            "AGM": True,
+            "SGM": True,
+            "AGM %": True,
+            "SGM %": True,
+            "VAR %": True
+        }
 
-        if metric in ["COGS", "VCE"]:
-            positive_good = False
-        elif metric == "VAR":
-            positive_good = False
+        positive_good = positive_good_map.get(metric, True)
 
         if val > 0:
             return ["color: green" if positive_good else "color: red"]
@@ -238,11 +245,18 @@ def render_unit_bridge():
             return [""]
 
 
-    styled = result.style.apply(
-        lambda row: color_delta_row(row, result),
-        axis=1,
-        subset=["Δ"]
-    )
+    styled = result.style \
+        .format({
+            "ACT": "{:,.2f}",
+            "BDG": "{:,.2f}",
+            "Δ": "{:,.2f}"
+        }) \
+        .apply(
+            lambda row: color_delta_row(row, result),
+            axis=1,
+            subset=["Δ"]
+        )
+
 
     st.dataframe(styled, use_container_width=True)
     # ==================================================
@@ -291,6 +305,7 @@ def render_unit_bridge():
         ("TN", act_tn, bdg_tn),
         ("COGS", act_cogs, bdg_cogs),
         ("VCE", act_vce, bdg_vce),
+        ("VAR", act_var, bdg_var),
         ("AGM", act_agm, bdg_agm),
         ("SGM", act_sgm, bdg_sgm),
     ]
@@ -304,14 +319,51 @@ def render_unit_bridge():
         })
 
     totals_df = pd.DataFrame(totals)
-    totals_styled = totals_df.style.apply(
-        lambda row: color_delta_row(row, totals_df),
-        axis=1,
-        subset=["Δ"]
+    # ===============================
+    # ADD VAR %
+    # ===============================
+    act_var_pct = act_var / act_tn if act_tn != 0 else 0
+    bdg_var_pct = bdg_var / bdg_tn if bdg_tn != 0 else 0
+
+    var_pct_row = pd.DataFrame([{
+        "Metric": "VAR %",
+        "ACT": act_var_pct * 100,
+        "BDG": bdg_var_pct * 100,
+        "Δ": (act_var_pct - bdg_var_pct) * 100
+    }])
+
+
+    
+
+    
+
+    
+    # ✅ % satırlarını belirle
+    pct_mask = totals_df["Metric"].str.contains("%")
+
+    totals_styled = totals_df.style \
+        .format({
+            "ACT": "{:,.0f}",
+            "BDG": "{:,.0f}",
+            "Δ": "{:+,.0f}"
+        }) \
+        .apply(
+            lambda row: color_delta_row(row, totals_df),
+            axis=1,
+            subset=["Δ"]
+        )
+
+    # ✅ sadece % satırlarını override et
+    totals_styled = totals_styled.format(
+        {
+            "ACT": "{:.2f}%",
+            "BDG": "{:.2f}%",
+            "Δ": "{:+.2f}%"
+        },
+        subset=pd.IndexSlice[pct_mask, ["ACT", "BDG", "Δ"]]
     )
 
-    st.dataframe(
-        totals_styled,
-        use_container_width=True
-    )
+    st.dataframe(totals_styled, use_container_width=True)
+
+
     st.caption("Δ = ACT - BDG")

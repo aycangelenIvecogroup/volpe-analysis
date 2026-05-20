@@ -269,11 +269,80 @@ def render_comparison():
     # ✅ duplicate kolonları temizle
     ordered_cols = list(dict.fromkeys(ordered_cols))
     pivot = pivot[ordered_cols]
+    pivot = pivot.round(2)
    # ==================================================
     # DISPLAY
     # ==================================================
     st.subheader("Results")
 
+    def format_euro(x):
+        if abs(x) >= 1_000_000:
+            return f"€ {x/1_000_000:.1f}M"
+        elif abs(x) >= 1_000:
+            return f"€ {x/1_000:.1f}K"
+        else:
+            return f"€ {x:.0f}"
+        
+    def style_table(df):
+
+        def apply_colors(row):
+            styles = []
+
+            for col in row.index:
+
+                val = row[col]
+
+                if "Δ" in col and isinstance(val, (int, float)):
+
+                    # ✅ COGS = ters
+                    if "COGS" in col:
+                        if val < 0:
+                            styles.append("background-color:#dcfce7")  # good
+                        elif val > 0:
+                            styles.append("background-color:#fee2e2")  # bad
+                        else:
+                            styles.append("")
+
+                    # ✅ VAR / diğerleri = normal
+                    else:
+                        if val > 0:
+                            styles.append("background-color:#dcfce7")
+                        elif val < 0:
+                            styles.append("background-color:#fee2e2")
+                        else:
+                            styles.append("")
+                else:
+                    styles.append("")
+
+            return styles
+
+        styled = df.style.apply(apply_colors, axis=1)
+
+        format_dict = {}
+
+        for col in df.columns:
+
+            col_lower = col.lower()
+
+            # ✅ Δ %
+            if "%Δ" in col or "%∆" in col:
+                format_dict[col] = "{:+.1f}%"
+
+            # ✅ normal %
+            elif "%" in col:
+                format_dict[col] = "{:.1f}%"
+
+            # ✅ € values
+            elif any(k in col_lower for k in ["tn", "cogs", "agm", "sgm"]):
+                format_dict[col] = format_euro
+
+            # ✅ units
+            elif "units" in col_lower:
+                format_dict[col] = "{:,.0f}"
+
+        styled = df.style.apply(apply_colors, axis=1).format(format_dict)
+        return styled
+    
     def highlight_total(row):
         if row.iloc[0] == "TOTAL":
             return ["background-color: #d9edf7"] * len(row)
@@ -286,14 +355,30 @@ def render_comparison():
             elif float(val) < 0:
                 return "color: red"
         except:
-            return ""
+            pass
         return ""
 
+    styled = style_table(pivot)
+
+    # Apply delta text coloring to all delta columns
+    delta_cols = [col for col in pivot.columns if "Δ" in col or "%Δ" in col or "%∆" in col]
+    if delta_cols:
+        styled = styled.map(lambda x: highlight_delta(x), subset=delta_cols)
+
+    # Highlight total row
+    styled = styled.apply(highlight_total, axis=1)
+
+    # Align: group columns left, numeric columns right
+    styled = styled.set_properties(**{"text-align": "right"})
+    if group_cols:
+        try:
+            styled = styled.set_properties(subset=group_cols, **{"text-align": "left"})
+        except Exception:
+            pass
+
+    st.dataframe(styled, use_container_width=True)
 
 
-
-
-    st.dataframe(pivot, use_container_width=True)
 
 
     st.caption("""
