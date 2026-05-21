@@ -9,7 +9,8 @@ from views.unit_bridge import render_unit_bridge
 from views.insights import render_full_diagnostic
 from views.product_analysis import render_product_analysis
 from views.dashboard import render_dashboard
-
+from dotenv import load_dotenv
+load_dotenv()
 # =========================
 # 🔧 CONFIG
 # =========================
