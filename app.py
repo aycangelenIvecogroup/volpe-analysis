@@ -10,8 +10,12 @@ from views.unit_bridge import render_unit_bridge
 from views.insights import render_full_diagnostic
 from views.product_analysis import render_product_analysis
 from views.dashboard import render_dashboard
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except:
+    pass
+
 # =========================
 # 🔧 CONFIG
 # =========================
@@ -45,7 +49,7 @@ if not st.session_state["authenticated"]:
     # PASSWORD
     password = st.text_input("Enter password", type="password")
 
-    PASSWORD = os.getenv("APP_PASSWORD")
+    PASSWORD = os.getenv("APP_PASSWORD") or st.secrets.get("APP_PASSWORD")
 
     if password:
         if password == PASSWORD:
