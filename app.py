@@ -1,5 +1,4 @@
 import streamlit as st
-st.write("CORRECT VERSION ✅")
 import os
 
 from ui.sidebar import render_sidebar

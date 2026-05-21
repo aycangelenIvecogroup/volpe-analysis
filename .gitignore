@@ -4,3 +4,4 @@
 # python cache
 __pycache__/
 *.pyc
+.env
