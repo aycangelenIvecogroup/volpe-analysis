@@ -9,6 +9,8 @@ from views.unit_bridge import render_unit_bridge
 from views.insights import render_full_diagnostic
 from views.product_analysis import render_product_analysis
 from views.dashboard import render_dashboard
+from views.customer_overview import render_customer_overview 
+from views.scenario_builder import render_scenario_builder
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -77,6 +79,19 @@ pages = {
     "⚖️ Comparison": render_comparison,
     "📊 Unit Bridge": render_unit_bridge,
     "⚠️ Problems": render_problems,
-}
+    "📊 Customer Overview": render_customer_overview,
+    "🧪 Scenario Builder": render_scenario_builder,
+    }
 
-pages[selected]()
+page, months_passed, show_details = selected
+import inspect
+
+func = pages[page]
+
+# param alıyor mu kontrol et
+params = inspect.signature(func).parameters
+
+if len(params) == 2:
+    func(months_passed, show_details)
+else:
+    func()

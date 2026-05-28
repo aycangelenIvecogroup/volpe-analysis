@@ -88,7 +88,7 @@ def load_all_data():
 # ==================================================
 # PAGE
 # ==================================================
-def render_dashboard():
+def render_dashboard(months_passed=None, show_details=False):
     
     def format_euro_short(x):
         if pd.isna(x) or x == "":
@@ -111,7 +111,8 @@ def render_dashboard():
     st.title("📊 Customer Performance vs Scenarios")
 
     # months selector (mart = 3)
-    months_passed = st.sidebar.slider("Months passed", 1, 12, 3)
+    if months_passed is None:
+        months_passed = st.sidebar.slider("Months passed", 1, 12, 3)
     show_scenarios = st.sidebar.checkbox("Show scenario columns", value=False)
     show_details = st.sidebar.checkbox("Show detailed values", value=False)
 

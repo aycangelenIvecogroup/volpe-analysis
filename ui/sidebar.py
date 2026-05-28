@@ -36,8 +36,9 @@ def render_sidebar():
 
         st.markdown("---")
 
+        # ✅ FIXED RADIO
         page = st.radio(
-            "",
+            "Navigation",
             [
                 "🏠 Dashboard",
                 "👥 Customer Analysis",
@@ -46,14 +47,21 @@ def render_sidebar():
                 "⚖️ Comparison",
                 "📊 Unit Bridge",
                 "⚠️ Problems",
-            ]
+                "📊 Customer Overview",
+                "🧪 Scenario Builder"
+            ],
+            label_visibility="collapsed"
         )
 
         st.markdown("---")
+
+        # ✅ Inputs
+        months_passed = st.slider("Months passed", 1, 12, 3)
+        show_details = st.checkbox("Show details", value=False)
 
         st.markdown(
             "<p style='text-align:center; font-size:12px; color:gray;'>Made by ❤️ Aycan Gelen</p>",
             unsafe_allow_html=True
         )
 
-    return page
+    return page, months_passed, show_details
