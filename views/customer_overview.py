@@ -156,17 +156,20 @@ def render_customer_overview():
     with col_controls:
         st.markdown("### ⚙️ Controls")
 
+        st.markdown("### 📊 KPI Details")
+        selected_scenarios = st.multiselect(
+            "",
+            ["ACT", "BDG", "FCS1", "LY"],
+            default=[]
+        )
+
         months = st.slider(
             "Months passed", 1, 12, 3,
             key="months_slider_main"
         )
 
         
-        selected_scenarios = st.multiselect(
-            "KPI Details",
-            ["ACT", "BDG", "FCS1", "LY"],
-            default=[]
-        )
+       
 
 
     # ======================
@@ -287,26 +290,57 @@ def render_customer_overview():
 
     final_df = pd.DataFrame(rows)
 
-    if show_details:
+    if selected_scenarios:
 
-        detail_cols = pivot[[
-            "customer",
-            "tn_ACT", "tn_BDG", "tn_FCS1", "tn_LY",
-            "agm_ACT", "agm_BDG", "agm_FCS1", "agm_LY",
-            "margin_YTD", "margin_BDG", "margin_FCS1", "margin_LY"
-        ]].copy()
+        cols = ["customer"]
 
-        detail_cols["margin_YTD"] *= 100
-        detail_cols["margin_BDG"] *= 100
-        detail_cols["margin_FCS1"] *= 100
-        detail_cols["margin_LY"] *= 100
+        if "ACT" in selected_scenarios:
+            cols += ["tn_ACT", "agm_ACT", "margin_YTD"]
 
-        final_df = final_df.merge(
-            detail_cols,
-            left_on="Customer",
-            right_on="customer",
-            how="left"
-        ).drop(columns=["customer"])
+        if "BDG" in selected_scenarios:
+            cols += ["tn_BDG", "agm_BDG", "margin_BDG"]
+
+        if "FCS1" in selected_scenarios:
+            cols += ["tn_FCS1", "agm_FCS1", "margin_FCS1"]
+
+        if "LY" in selected_scenarios:
+            cols += ["tn_LY", "agm_LY", "margin_LY"]
+
+        detail_cols = pivot[cols].copy()
+
+        # margin % yap
+        for c in detail_cols.columns:
+            if "margin" in c:
+                detail_cols[c] = detail_cols[c] * 100
+
+        # ======================
+        # KPI DETAILS - EXPANDABLE ✅
+        # ======================
+
+        if "ACT" in selected_scenarios:
+            with st.expander("📘 ACT Details"):
+                st.dataframe(
+                    pivot[["customer","tn_ACT","agm_ACT","margin_YTD"]]
+                )
+
+        if "BDG" in selected_scenarios:
+            with st.expander("💰 Budget (BDG)"):
+                st.dataframe(
+                    pivot[["customer","tn_BDG","agm_BDG","margin_BDG"]]
+                )
+
+        if "FCS1" in selected_scenarios:
+            with st.expander("🔮 Forecast (FCS1)"):
+                st.dataframe(
+                    pivot[["customer","tn_FCS1","agm_FCS1","margin_FCS1"]]
+                )
+
+        if "LY" in selected_scenarios:
+            with st.expander("📉 Last Year (LY)"):
+                st.dataframe(
+                    pivot[["customer","tn_LY","agm_LY","margin_LY"]]
+                )
+
 
     # ✅ TEMİZ HEADERS
     def clean_col(c):
