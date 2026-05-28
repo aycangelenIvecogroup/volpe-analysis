@@ -154,18 +154,20 @@ def render_customer_overview():
         st.title("📊 Customer Performance")
 
     with col_controls:
+        
         st.markdown("### ⚙️ Controls")
 
-        st.markdown("### 📊 KPI Details")
+        # ✅ KPI DETAILS
         selected_scenarios = st.multiselect(
-            "",
+            "📊 KPI Details",
             ["ACT", "BDG", "FCS1", "LY"],
             default=[]
         )
 
+        # ✅ SLIDER ALTTA
         months = st.slider(
-            "Months passed", 1, 12, 3,
-            key="months_slider_main"
+            "Months",
+            1, 12, 3
         )
 
         

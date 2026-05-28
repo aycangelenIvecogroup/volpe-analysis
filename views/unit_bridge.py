@@ -5,7 +5,7 @@ from pathlib import Path
 # ==================================================
 # PATH
 # ==================================================
-BASE_PATH = Path(r"C:\projects\volpe_analysis\data")
+BASE_PATH = Path(__file__).resolve().parent.parent / "data"
 
 FILES = {
     "ACT": BASE_PATH / "clean excel files" / "c04_2026_clean.xlsx",
