@@ -1,67 +1,54 @@
 import streamlit as st
-st.markdown("""
-<style>
 
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #ffe4e6, #fbcfe8);
-}
-
-
-div[role="radiogroup"] > label {
-    padding: 8px 12px;
-    margin: 4px 0;
-    border-radius: 10px;
-    transition: all 0.2s ease;
-}
-
-div[role="radiogroup"] > label:hover {
-    background-color: #e0e7ff;
-    cursor: pointer;
-}
-
-div[role="radiogroup"] label[data-checked="true"] {
-    background-color: #6366f1 !important;
-    color: white !important;
-    font-weight: 600;
-}
-</style>
-""", unsafe_allow_html=True)
 def render_sidebar():
+
+    if "page" not in st.session_state:
+        st.session_state.page = "📊 Customer Overview"
+
     with st.sidebar:
 
-        st.markdown(
-            "<h2 style='text-align: center;'>🎛️ Control Panel 😺</h2>",
-            unsafe_allow_html=True
-        )
+        st.markdown("## Control Panel")
+
+        def menu_item(label, desc):
+            active = st.session_state.page == label
+
+            bg = "#4f46e5" if active else "transparent"
+            color = "white" if active else "#374151"
+
+            if st.markdown(
+                f"""
+                <div style="
+                    padding:10px;
+                    border-radius:8px;
+                    background:{bg};
+                    color:{color};
+                    margin-bottom:6px;
+                ">
+                    <div style="font-weight:600;">{label}</div>
+                    <div style="font-size:11px; opacity:0.7;">{desc}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            ):
+                st.session_state.page = label
+
+        # menu
+        if st.button("📊 Customer Overview"):
+            st.session_state.page = "📊 Customer Overview"
+
+        st.caption("Customer performance summary")
+
+        if st.button("🧪 Scenario Builder"):
+            st.session_state.page = "🧪 Scenario Builder"
+
+        st.caption("Simulate pricing & volume")
+
+        if st.button("📊 Unit Bridge"):
+            st.session_state.page = "📊 Unit Bridge"
+
+        st.caption("Analyze margin drivers")
 
         st.markdown("---")
+        st.caption("Aycan Gelen")
 
-        # ✅ FIXED RADIO
-        page = st.radio(
-            "Navigation",
-            [
-                "🏠 Dashboard",
-                "👥 Customer Analysis",
-                "💡 Insights",
-                "📦 Product Analysis",
-                "⚖️ Comparison",
-                "📊 Unit Bridge",
-                "⚠️ Problems",
-                "📊 Customer Overview",
-                "🧪 Scenario Builder"
-            ],
-            label_visibility="collapsed"
-        )
-
-        st.markdown("---")
-
-        # ✅ Inputs
-        months_passed = st.slider("Months passed", 1, 12, 3)
-        show_details = st.checkbox("Show details", value=False)
-
-        st.markdown(
-            "<p style='text-align:center; font-size:12px; color:gray;'>Made by ❤️ Aycan Gelen</p>",
-            unsafe_allow_html=True
-        )
-
-    return page, months_passed, show_details
+    return st.session_state.page

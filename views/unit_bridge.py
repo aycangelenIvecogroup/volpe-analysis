@@ -2,8 +2,17 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-BASE_PATH = Path("data/raw")
+# ==================================================
+# PATH
+# ==================================================
+BASE_PATH = Path(r"C:\projects\volpe_analysis\data")
 
+FILES = {
+    "ACT": BASE_PATH / "clean excel files" / "c04_2026_clean.xlsx",
+    "BDG": BASE_PATH / "clean excel files" / "BDG2026_v4_clean.xlsx",
+    "FCST": BASE_PATH / "clean excel files" / "fcst1_2026_clean.xlsx",
+    "LY": BASE_PATH / "clean excel files" / "LY25_clean.xlsx"
+}
 
 # ==================================================
 # CLEAN
@@ -23,347 +32,340 @@ def clean_columns(df):
 # LOAD DATA
 # ==================================================
 @st.cache_data
-def load_data():
+def load_all():
 
-    def load_file(path, scenario):
+    all_df = []
+
+    for scen, path in FILES.items():
+
         df = pd.read_excel(path)
         df = clean_columns(df)
 
         df = df.rename(columns={
-
             "CUSTOMER MERGE": "customer",
+            "FAMILY": "family",
             "PRODUCT": "product",
             "PN ALLESTIMENTO": "pn",
-
-            "ACT UNITS": "units",
             "UNITS": "units",
-            "FY UNITS": "units",
-
-            "ACT TN": "tn",
             "TN": "tn",
-            "FY TN": "tn",
-
-            "ACT COGS": "cogs",
             "COGS": "cogs",
-            "FY COGS": "cogs",
-
-            "ACT AGM": "agm",
-            "AGM": "agm",
-
-            "ACT VCE": "vce",
             "VCE": "vce",
-            "FY VCE": "vce",
-            "ACT SGM": "sgm",
             "SGM": "sgm",
-
-
+            "AGM": "agm"
         })
 
-        df["SCENARIO"] = scenario
-        return df
+        for c in ["units", "tn", "cogs", "vce", "sgm", "agm"]:
+            if c not in df.columns:
+                df[c] = 0
 
-    march = load_file(BASE_PATH / "raw_agm03.xlsx", "MARCH")
-    bdg = load_file(BASE_PATH / "raw_bdg26.xlsx", "BDG")
+        df["SCENARIO"] = scen
+        all_df.append(df)
 
-    df = pd.concat([march, bdg])
+    df = pd.concat(all_df, ignore_index=True)
 
-    for c in ["units", "tn", "cogs", "agm", "vce", "sgm"]:
+    for c in ["units", "tn", "cogs", "vce", "sgm", "agm"]:
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
 
     return df
 
 
 # ==================================================
-# PAGE
+# COLOR LOGIC
 # ==================================================
-def render_unit_bridge():
+def color_logic(row):
 
-    st.title("🧩 Unit Price Breakdown (ACT vs BDG)")
+    styles = []
 
-    df = load_data()
+    # Metric adı güvenli şekilde al
+    metric = row.get("Metric", None)
 
-    # ===============================
-    # CUSTOMER SELECT
-    # ===============================
-    customer = st.selectbox(
-        "Select Customer",
-        sorted(df["customer"].dropna().unique())
-    )
+    # Eğer Metric yoksa → index kullan
+    if metric is None:
+        metric = row.name
 
-    df = df[df["customer"] == customer]
+    inverted = ["COGS", "VAR"]
 
-    # ===============================
-    # PN SELECT
-    # ===============================
-    pn = st.selectbox(
-        "Select PN",
-        sorted(df["pn"].dropna().unique())
-    )
+    for col in row.index:
 
-    df = df[df["pn"] == pn]
+        if "Δ" not in col:
+            styles.append("")
+            continue
 
-    # ===============================
-    # AGGREGATION
-    # ===============================
-    df_group = df.groupby(["SCENARIO"], as_index=False)[
-        ["units", "tn", "cogs", "agm", "vce", "sgm"]
-    ].sum()
+        val = row[col]
 
-    df_group = df_group.set_index("SCENARIO")
+        positive_good = metric not in inverted
 
-    # ===============================
-    # CALCULATIONS
-    # ===============================
-    def calc_unit(row):
-        units = row["units"] if row["units"] != 0 else 1
+        if val > 0:
+            styles.append("color: green; font-weight: bold;" if positive_good else "color: red; font-weight: bold;")
+        elif val < 0:
+            styles.append("color: red; font-weight: bold;" if positive_good else "color: green; font-weight: bold;")
+        else:
+            styles.append("")
 
-        unit_price = row["tn"] / units
-        unit_cogs = row["cogs"] / units
-        unit_agm = row["agm"] / units
+    return styles
 
-        unit_vce = row["vce"] / units if "vce" in row else 0
+
+# ==================================================
+# UNIT TABLE
+# ==================================================
+def build_unit_table(df_group, scenarios):
+
+    def calc(row):
+        u = row["units"] if row["units"] != 0 else 1
+        unit_price = row["tn"] / u
+        unit_cogs = row["cogs"] / u
+        unit_vce = row["vce"] / u
+        unit_agm = row["agm"] / u
         unit_var = unit_price - unit_cogs - unit_vce - unit_agm
 
         return pd.Series({
-            "unit_price": unit_price,
-            "unit_cogs": unit_cogs,
-            "unit_vce": unit_vce,
-            "unit_var": unit_var,
-            "unit_agm": unit_agm
+            "Unit Price": unit_price,
+            "COGS": unit_cogs,
+            "VCE": unit_vce,
+            "VAR": unit_var,
+            "AGM": unit_agm
         })
 
-    unit_df = df_group.apply(calc_unit, axis=1)
+    unit_df = df_group.apply(calc, axis=1)
 
-    # ===============================
-    # BUILD TABLE
-    # ===============================
-    scenarios = ["MARCH", "BDG"]
+    rows = []
 
-    data = []
-    metrics = ["unit_price", "unit_cogs", "unit_vce", "unit_var", "unit_agm"]
+    for metric in unit_df.columns:
+        row = {"Metric": metric}
 
-    names = {
-        "unit_price": "Unit Price",
-        "unit_cogs": "COGS",
-        "unit_vce": "VCE",
-        "unit_var": "VAR",
-        "unit_agm": "AGM"
-    }
+        for s in scenarios:
+            row[s] = unit_df.loc[s][metric] if s in unit_df.index else 0
 
-    for m in metrics:
+        for s in scenarios:
+            if s != "ACT":
+                row[f"Δ vs {s}"] = row["ACT"] - row[s]
 
-        act_val = unit_df.loc["MARCH", m] if "MARCH" in unit_df.index else 0
-        bdg_val = unit_df.loc["BDG", m] if "BDG" in unit_df.index else 0
+        rows.append(row)
 
-        data.append({
-            "Metric": names[m],
-            "ACT": act_val,
-            "BDG": bdg_val,
-            "Δ": act_val - bdg_val
-        })
+    res = pd.DataFrame(rows)
 
-    result = pd.DataFrame(data)
+    return res
 
-    # ==================================================
-    # ADD AGM %
-    # ==================================================
-    if "MARCH" in df_group.index and df_group.loc["MARCH", "tn"] != 0:
-        act_margin = df_group.loc["MARCH", "agm"] / df_group.loc["MARCH", "tn"]
-    else:
-        act_margin = 0
 
-    if "BDG" in df_group.index and df_group.loc["BDG", "tn"] != 0:
-        bdg_margin = df_group.loc["BDG", "agm"] / df_group.loc["BDG", "tn"]
-    else:
-        bdg_margin = 0
+# ==================================================
+# TOTAL TABLE
+# ==================================================
+def build_total_table(df_group, scenarios):
 
-    margin_row = pd.DataFrame([{
-        "Metric": "AGM %",
-        "ACT": act_margin * 100,
-        "BDG": bdg_margin * 100,
-        "Δ": (act_margin - bdg_margin) * 100
-    }])
+    def get(s, col):
+        return df_group.loc[s, col] if s in df_group.index else 0
 
-    result = pd.concat([result, margin_row], ignore_index=True)
+    rows = []
 
-    # ==================================================
-    # ADD SGM %
-    # ==================================================
-    if "MARCH" in df_group.index and df_group.loc["MARCH", "tn"] != 0:
-        act_sgm_margin = df_group.loc["MARCH", "sgm"] / df_group.loc["MARCH", "tn"]
-    else:
-        act_sgm_margin = 0
+    for s in scenarios:
+        tn = get(s, "tn")
 
-    if "BDG" in df_group.index and df_group.loc["BDG", "tn"] != 0:
-        bdg_sgm_margin = df_group.loc["BDG", "sgm"] / df_group.loc["BDG", "tn"]
-    else:
-        bdg_sgm_margin = 0
+    base = {}
 
-    sgm_row = pd.DataFrame([{
-        "Metric": "SGM %",
-        "ACT": act_sgm_margin * 100,
-        "BDG": bdg_sgm_margin * 100,
-        "Δ": (act_sgm_margin - bdg_sgm_margin) * 100
-    }])
+    for s in scenarios:
+        tn = get(s, "tn")
+        cogs = get(s, "cogs")
+        vce = get(s, "vce")
+        agm = get(s, "agm")
 
-    result = pd.concat([result, sgm_row], ignore_index=True)
+        var = tn - cogs - vce - agm
+        sgm = agm + var
 
-    # ===============================
-    # DISPLAY
-    # ===============================
-    st.subheader(f"{customer} | {pn}")
-    def color_delta(val):
-        if val > 0:
-            return "color: green"
-        elif val < 0:
-            return "color: red"
-        return ""
-
-    def color_delta_row(row, df_ref):
-        val = row["Δ"]
-        metric = df_ref.loc[row.name, "Metric"]
-
-        positive_good_map = {
-            "Unit Price": True,
-            "COGS": False,
-            "VCE": True,
-            "VAR": False,
-            "AGM": True,
-            "SGM": True,
-            "AGM %": True,
-            "SGM %": True,
-            "VAR %": True
+        base[s] = {
+            "UNITS": get(s, "units"),
+            "TN": tn,
+            "COGS": cogs,
+            "VCE": vce,
+            "VAR": var,
+            "AGM": agm,
+            "SGM": sgm,
+            "AGM %": (agm / tn * 100) if tn != 0 else 0,
+            "SGM %": (sgm / tn * 100) if tn != 0 else 0,
+            "VAR %": (var / tn * 100) if tn != 0 else 0,
         }
 
-        positive_good = positive_good_map.get(metric, True)
+    metrics = list(base["ACT"].keys())
 
-        if val > 0:
-            return ["color: green" if positive_good else "color: red"]
-        elif val < 0:
-            return ["color: red" if positive_good else "color: green"]
+    for m in metrics:
+        row = {"Metric": m}
+
+        for s in scenarios:
+            row[s] = base[s][m]
+
+        for s in scenarios:
+            if s != "ACT":
+                row[f"Δ vs {s}"] = row["ACT"] - row[s]
+
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+# ==================================================
+# DISPLAY
+# ==================================================
+def show_table(df):
+
+    df = df.copy()
+
+    # =========================
+    # UNIT TABLE MI?
+    # =========================
+    is_unit = df["Metric"].astype(str).str.contains("Unit").any()
+
+    # =========================
+    # BUILD FORMAT DICT
+    # =========================
+    format_dict = {}
+
+    for col in df.columns:
+
+        if col == "Metric":
+            continue
+
+        # ✅ yüzde kolonları
+        if "%" in col:
+            format_dict[col] = "{:.2f} %"
+
+        # ✅ delta kolonları
+        elif "Δ" in col:
+
+            # metric bazlı % delta (pp)
+            if df["Metric"].astype(str).str.contains("%").any():
+                format_dict[col] = "{:+.2f} pp"
+            else:
+                format_dict[col] = "{:+,.0f}"
+
+        # ✅ unit table
+        elif is_unit:
+            format_dict[col] = "{:,.2f}"
+
+        # ✅ normal total values
         else:
-            return [""]
+            format_dict[col] = "{:,.0f}"
 
-
-    styled = result.style \
-        .format({
-            "ACT": "{:,.2f}",
-            "BDG": "{:,.2f}",
-            "Δ": "{:,.2f}"
+    # =========================
+    # STYLE APPLY
+    # =========================
+    styled = df.style \
+        .format(format_dict) \
+        .apply(color_logic, axis=1) \
+        .apply(delta_background, axis=1) \
+        .set_properties(**{
+            'font-size': '14px',
+            'padding': '6px 10px'
         }) \
-        .apply(
-            lambda row: color_delta_row(row, result),
-            axis=1,
-            subset=["Δ"]
-        )
-
+        .set_properties(subset=["Metric"], **{
+            'text-align': 'left',
+            'font-weight': 'bold'
+        }) \
+        .set_table_styles([
+            {
+                'selector': 'th',
+                'props': [
+                    ('text-align', 'center'),
+                    ('font-weight', 'bold'),
+                    ('font-size', '15px')
+                ]
+            }
+        ])
 
     st.dataframe(styled, use_container_width=True)
-    # ==================================================
-    # TOTAL TABLE (FULL P&L)
-    # ==================================================
-    st.subheader("Total Values (No Unit)")
 
-    totals = []
+def delta_background(row):
 
-    
+    styles = []
 
-    # SCENARIO değerleri al
-    def get_val(scenario, col):
-        if scenario in df_group.index:
-            return df_group.loc[scenario, col]
-        return 0
+    for col in row.index:
 
-    act_units = get_val("MARCH", "units")
-    bdg_units = get_val("BDG", "units")
+        if "Δ" not in col:
+            styles.append("")
+            continue
 
-    act_tn = get_val("MARCH", "tn")
-    bdg_tn = get_val("BDG", "tn")
+        val = row[col]
 
-    act_cogs = get_val("MARCH", "cogs")
-    bdg_cogs = get_val("BDG", "cogs")
+        if val > 0:
+            styles.append("background-color: #e6ffed;")
+        elif val < 0:
+            styles.append("background-color: #ffe6e6;")
+        else:
+            styles.append("")
 
-    act_agm = get_val("MARCH", "agm")
-    bdg_agm = get_val("BDG", "agm")
-
-    act_vce = get_val("MARCH", "vce")
-    bdg_vce = get_val("BDG", "vce")
+    return styles
 
 
-   
-    # ✅ VAR (P&L den türet)
-    act_var = act_tn - act_cogs - act_vce - act_agm
-    bdg_var = bdg_tn - bdg_cogs - bdg_vce - bdg_agm
 
-    # ✅ SGM
-    act_sgm = act_agm + act_var
-    bdg_sgm = bdg_agm + bdg_var
+# ==================================================
+# MAIN PAGE
+# ==================================================
+def render():
 
-    # ✅ Build rows (SENİN İSTEDİĞİN SIRA)
-    rows = [
-        ("UNITS", act_units, bdg_units),
-        ("TN", act_tn, bdg_tn),
-        ("COGS", act_cogs, bdg_cogs),
-        ("VCE", act_vce, bdg_vce),
-        ("VAR", act_var, bdg_var),
-        ("AGM", act_agm, bdg_agm),
-        ("SGM", act_sgm, bdg_sgm),
-    ]
+    st.title("🔥 Full P&L Analyzer")
 
-    for name, act_val, bdg_val in rows:
-        totals.append({
-            "Metric": name,
-            "ACT": act_val,
-            "BDG": bdg_val,
-            "Δ": act_val - bdg_val
-        })
+    df = load_all()
 
-    totals_df = pd.DataFrame(totals)
     # ===============================
-    # ADD VAR %
+    # SCENARIO SELECT
     # ===============================
-    act_var_pct = act_var / act_tn if act_tn != 0 else 0
-    bdg_var_pct = bdg_var / bdg_tn if bdg_tn != 0 else 0
-
-    var_pct_row = pd.DataFrame([{
-        "Metric": "VAR %",
-        "ACT": act_var_pct * 100,
-        "BDG": bdg_var_pct * 100,
-        "Δ": (act_var_pct - bdg_var_pct) * 100
-    }])
-
-
-    
-
-    
-
-    
-    # ✅ % satırlarını belirle
-    pct_mask = totals_df["Metric"].str.contains("%")
-
-    totals_styled = totals_df.style \
-        .format({
-            "ACT": "{:,.0f}",
-            "BDG": "{:,.0f}",
-            "Δ": "{:+,.0f}"
-        }) \
-        .apply(
-            lambda row: color_delta_row(row, totals_df),
-            axis=1,
-            subset=["Δ"]
-        )
-
-    # ✅ sadece % satırlarını override et
-    totals_styled = totals_styled.format(
-        {
-            "ACT": "{:.2f}%",
-            "BDG": "{:.2f}%",
-            "Δ": "{:+.2f}%"
-        },
-        subset=pd.IndexSlice[pct_mask, ["ACT", "BDG", "Δ"]]
+    scenarios = ["ACT"] + st.multiselect(
+        "Compare with",
+        ["BDG", "FCST", "LY"],
+        default=["BDG"]
     )
 
-    st.dataframe(totals_styled, use_container_width=True)
+    # ===============================
+    # CUSTOMER
+    # ===============================
+    customer = st.multiselect(
+        "Customer",
+        df["customer"].dropna().unique()
+    )
+
+    d0 = df[df["customer"].isin(customer)]
+
+    levels = [
+        ("CUSTOMER", []),
+        ("FAMILY", ["family"]),
+        ("PRODUCT", ["family", "product"]),
+        ("PN", ["family", "product", "pn"]),
+    ]
+
+    current_df = d0.copy()
+
+    # ===============================
+    # LOOP LEVELS
+    # ===============================
+    for level_name, group_cols in levels:
+
+        st.markdown(f"## 🔹 {level_name}")
+
+        if group_cols:
+            options = current_df[group_cols[-1]].dropna().unique()
+            selected = st.multiselect(level_name, options)
+            if selected:
+                current_df = current_df[current_df[group_cols[-1]].isin(selected)]
+
+        df_group = current_df.groupby("SCENARIO")[[
+            "units", "tn", "cogs", "vce", "sgm", "agm"
+        ]].sum()
+
+        # ===============================
+        # UNIT TABLE
+        # ===============================
+        st.subheader("Unit Table")
+        unit_table = build_unit_table(df_group, scenarios)
+        show_table(unit_table)
+
+        # ===============================
+        # TOTAL TABLE
+        # ===============================
+        st.subheader("Total (No Unit)")
+        total_table = build_total_table(df_group, scenarios)
+        show_table(total_table)
+
+        st.divider()
 
 
-    st.caption("Δ = ACT - BDG")
+# ==================================================
+if __name__ == "__main__":
+    render()

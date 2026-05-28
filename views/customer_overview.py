@@ -185,8 +185,7 @@ def render_customer_overview():
             options=sorted(df["customer"].unique())
         )
 
-    with col2:
-        top_n = st.slider("Top N Customers (by TN)", 5, 50, 20)
+
 
 
     # ======================
@@ -204,9 +203,6 @@ def render_customer_overview():
     if selected_customers:
         pivot = pivot[pivot["customer"].isin(selected_customers)]
 
-    # Customer seçilmemişse → Top N uygula
-    else:
-        pivot = pivot.sort_values("tn_ACT", ascending=False).head(top_n)
 
 
     # ======================
@@ -290,56 +286,56 @@ def render_customer_overview():
 
     final_df = pd.DataFrame(rows)
 
+    def highlight(val):
+        try:
+            txt = str(val).replace("%","").replace("pp","").strip()
+            v = float(txt)
+        except:
+            return ""
+
+        if v > 1:
+            return "background-color: #c6f7d0"
+        elif v < -1:
+            return "background-color: #f7c6c7"
+        else:
+            return "background-color: #fff3cd"
+
+
+
+    styled = final_df.style.map(highlight, subset=["Δ BDG","Δ FCS1","Δ LY"])
+
+    st.dataframe(styled, use_container_width=True, height=650)
+
+        # ======================
+    # KPI DETAILS ✅
+    # ======================
+
     if selected_scenarios:
+        st.markdown("## 📊 KPI Details")
 
-        cols = ["customer"]
+    if "ACT" in selected_scenarios:
+        with st.expander("📘 ACT Details"):
+            st.dataframe(
+                pivot[["customer","tn_ACT","agm_ACT","margin_YTD"]]
+            )
 
-        if "ACT" in selected_scenarios:
-            cols += ["tn_ACT", "agm_ACT", "margin_YTD"]
+    if "BDG" in selected_scenarios:
+        with st.expander("💰 Budget (BDG)"):
+            st.dataframe(
+                pivot[["customer","tn_BDG","agm_BDG","margin_BDG"]]
+            )
 
-        if "BDG" in selected_scenarios:
-            cols += ["tn_BDG", "agm_BDG", "margin_BDG"]
+    if "FCS1" in selected_scenarios:
+        with st.expander("🔮 Forecast (FCS1)"):
+            st.dataframe(
+                pivot[["customer","tn_FCS1","agm_FCS1","margin_FCS1"]]
+            )
 
-        if "FCS1" in selected_scenarios:
-            cols += ["tn_FCS1", "agm_FCS1", "margin_FCS1"]
-
-        if "LY" in selected_scenarios:
-            cols += ["tn_LY", "agm_LY", "margin_LY"]
-
-        detail_cols = pivot[cols].copy()
-
-        # margin % yap
-        for c in detail_cols.columns:
-            if "margin" in c:
-                detail_cols[c] = detail_cols[c] * 100
-
-        # ======================
-        # KPI DETAILS - EXPANDABLE ✅
-        # ======================
-
-        if "ACT" in selected_scenarios:
-            with st.expander("📘 ACT Details"):
-                st.dataframe(
-                    pivot[["customer","tn_ACT","agm_ACT","margin_YTD"]]
-                )
-
-        if "BDG" in selected_scenarios:
-            with st.expander("💰 Budget (BDG)"):
-                st.dataframe(
-                    pivot[["customer","tn_BDG","agm_BDG","margin_BDG"]]
-                )
-
-        if "FCS1" in selected_scenarios:
-            with st.expander("🔮 Forecast (FCS1)"):
-                st.dataframe(
-                    pivot[["customer","tn_FCS1","agm_FCS1","margin_FCS1"]]
-                )
-
-        if "LY" in selected_scenarios:
-            with st.expander("📉 Last Year (LY)"):
-                st.dataframe(
-                    pivot[["customer","tn_LY","agm_LY","margin_LY"]]
-                )
+    if "LY" in selected_scenarios:
+        with st.expander("📉 Last Year (LY)"):
+            st.dataframe(
+                pivot[["customer","tn_LY","agm_LY","margin_LY"]]
+            )
 
 
     # ✅ TEMİZ HEADERS
@@ -390,25 +386,6 @@ def render_customer_overview():
 
     final_df = final_df[main_cols + other_cols]
 
-    def highlight(val):
-        try:
-            txt = str(val).replace("%","").replace("pp","").strip()
-            v = float(txt)
-        except:
-            return ""
-
-        if v > 1:
-            return "background-color: #c6f7d0"
-        elif v < -1:
-            return "background-color: #f7c6c7"
-        else:
-            return "background-color: #fff3cd"
-
-
-
-    styled = final_df.style.map(highlight, subset=["Δ BDG","Δ FCS1","Δ LY"])
-
-    st.dataframe(styled, use_container_width=True, height=650)
 
 
     st.markdown("---")
