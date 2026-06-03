@@ -24,7 +24,13 @@ GROUP_MAP = {
 def enrich(df):
     df = df.copy()
 
-    df["var"] = df["tn"] - df["cogs"] - df["vce"] - df["agm"]
+    df["var"] = (
+        df.get("tn",0)
+        - df.get("cogs",0)
+        - df.get("vce",0)
+        - df.get("agm",0)
+    )
+
     df["price"] = np.where(df["units"]!=0, df["tn"]/df["units"],0)
     df["cost"]  = np.where(df["units"]!=0, df["cogs"]/df["units"],0)
 
@@ -34,22 +40,74 @@ def enrich(df):
 # FORMAT + COLOR
 # -----------------------
 
+def human_format(x):
+    if pd.isna(x):
+        return ""
+
+    x = float(x)
+
+    if abs(x) >= 1_000_000:
+        return f"{x/1_000_000:.1f}M"
+    elif abs(x) >= 1_000:
+        return f"{x/1_000:.1f}K"
+    else:
+        return f"{x:,.0f}"
+
+
+
+def euro(x):
+    if pd.isna(x):
+        return ""
+    return f"€ {human_format(x)}"
+
+
 def format_df(df):
     df = df.copy()
 
     for col in df.columns:
+
         num = pd.to_numeric(df[col], errors="coerce")
 
-        if num.notna().any():
+        if not num.notna().any():
+            continue
 
-            if "Δ" in col:
-                df[col] = num.map(lambda x: f"{x:.1f} pp")
-            elif "%" in col:
-                df[col] = num.map(lambda x: f"{x:.1f}%")
+        col_lower = col.lower()
+
+        # ✅ DELTA
+        if "Δ" in col:
+
+            if "%" in col:
+                df[col] = num.map(lambda x: f"{x:+.1f} pp")
             else:
-                df[col] = num.map(lambda x: f"{x:,.0f}")
+                df[col] = num.map(lambda x: f"{human_format(x)}")
+
+        # ✅ PERCENT (ÖNCE GELMELİ!!)
+        elif "%" in col_lower:
+            df[col] = num.map(lambda x: f"{x:.1f}%")
+
+        # ✅ EURO KPI
+        elif any(k in col_lower for k in ["tn", "agm", "cogs", "vce", "sgm"]):
+            df[col] = num.map(lambda x: f"€ {human_format(x)}")
+
+        # ✅ UNITS
+        elif "units" in col_lower:
+            df[col] = num.map(lambda x: f"{int(x):,}")
+
+        # ✅ PRICE / COST
+        elif any(k in col_lower for k in ["price","cost"]):
+            df[col] = num.map(lambda x: f"€ {round(x):,}")
 
     return df
+
+st.markdown("""
+    <style>
+    td {
+        font-family: ui-monospace;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
 
 
 def highlight(df):
@@ -58,7 +116,10 @@ def highlight(df):
     for col in df.columns:
         if "Δ" in col or (len(df) > 0 and "pp" in str(df[col].iloc[0])):
 
-            reverse = any(x in col for x in ["cogs","price"])
+            metric_name = col.split("_")[0].lower()
+
+            reverse = metric_name in ["cogs", "cost"]
+
 
             def style(val):
                 try:
@@ -89,7 +150,24 @@ def render_scenario_builder():
     st.title("Scenario Builder 🚀")
 
     df = load_all_data()
-    df = enrich(df)
+
+    df["scenario"] = df["scenario"].replace({
+        "ACT": "ACTUAL",
+        "FCST": "FCS"
+    })
+    # ✅ FIX PN
+    df["pn_allestimento"] = (
+        df["pn_allestimento"]
+        .fillna("UNKNOWN")
+        .astype(str)
+        .replace(["nan", "None", "NaN"], "UNKNOWN")
+        .str.replace(".0","", regex=False)
+        .str.strip()
+    )
+
+
+
+
 
     # -----------------------
     # FILTERS
@@ -98,9 +176,18 @@ def render_scenario_builder():
     customers = st.multiselect("Customer", sorted(df["customer_merge"].dropna().unique()))
     families = st.multiselect("Family", sorted(df["family"].dropna().unique()))
     products = st.multiselect("Product", sorted(df["product"].dropna().unique()))
-    pns = st.multiselect("PN", sorted(df["pn_allestimento"].dropna().unique()))
+    pns = st.multiselect(
+        "PN",
+        sorted(df["pn_allestimento"].dropna().unique())
+    )
+    
+        
+    kpis = st.multiselect(
+        "KPIs",
+        KPI_ALL,
+        default=["agm"]  # sadece 1 KPI default
+    )
 
-    kpis = st.multiselect("KPIs", KPI_ALL, default=["agm"])
 
     level = st.selectbox("Aggregation Level", list(GROUP_MAP.keys()))
 
@@ -151,6 +238,18 @@ def render_scenario_builder():
         text-align: left;
         font-weight: 500;
     }
+    th, td {
+        min-width: 90px;
+    }
+
+    td {
+        text-align: right;
+    }
+
+    td:first-child {
+        text-align: left;
+    }
+                
 
     </style>
     """, unsafe_allow_html=True)
@@ -160,9 +259,13 @@ def render_scenario_builder():
     # -----------------------
 
     group_cols = GROUP_MAP[level] + ["scenario"]
-    valid_kpis = [k for k in kpis if k in f.columns]
+    BASE_KPIS = ["units","tn","cogs","vce","agm"]
+
+    valid_kpis = list(set(BASE_KPIS + kpis + ["price","cost"]))
+    valid_kpis = [k for k in valid_kpis if k in f.columns]
 
     agg = f.groupby(group_cols, as_index=False)[valid_kpis].sum()
+    agg = enrich(agg)
 
     df_final = agg.pivot_table(
         index=GROUP_MAP[level],
@@ -170,18 +273,104 @@ def render_scenario_builder():
         values=valid_kpis,
         fill_value=0
     )
+    # ✅ 1. Pivot
+    df_final = agg.pivot_table(
+        index=GROUP_MAP[level],
+        columns="scenario",
+        values=valid_kpis,
+        fill_value=0
+    )
 
-    df_final.columns = [f"{k}_{s}" for k,s in df_final.columns]
+    # ✅ 2. Flatten columns (kritik!)
+    df_final.columns = [f"{k}_{s}" for k, s in df_final.columns]
+
+    # ✅ 3. Reset index
     df_final = df_final.reset_index()
 
+    # ✅ % KPI ekle
+    for s in ["ACTUAL","BDG","FCS","LY"]:
+
+        if f"tn_{s}" in df_final.columns:
+
+            if f"agm_{s}" in df_final.columns:
+                df_final[f"agm%_{s}"] = np.where(
+                    df_final[f"tn_{s}"]!=0,
+                    df_final[f"agm_{s}"]/df_final[f"tn_{s}"]*100,
+                    0
+                )
+
+            if f"sgm_{s}" in df_final.columns:
+                df_final[f"sgm%_{s}"] = np.where(
+                    df_final[f"tn_{s}"]!=0,
+                    df_final[f"sgm_{s}"]/df_final[f"tn_{s}"]*100,
+                    0
+                )
+
+    # ✅ 1. DELTA HESAPLA
     for k in valid_kpis:
         if f"{k}_ACTUAL" in df_final.columns:
-            df_final[f"{k}_Δ ACT-BDG"] = df_final[f"{k}_ACTUAL"] - df_final.get(f"{k}_BDG",0)
+            df_final[f"{k}_Δ ACT-BDG"] = (
+                df_final[f"{k}_ACTUAL"] - df_final.get(f"{k}_BDG", 0)
+            )
+    # ✅ % delta (pp)
+    for k in ["agm%", "sgm%"]:
+        if f"{k}_ACTUAL" in df_final.columns:
+            df_final[f"{k}_Δ ACT-BDG"] = (
+                df_final[f"{k}_ACTUAL"] - df_final.get(f"{k}_BDG", 0)
+            )
+
+
+    ordered_cols = []
+
+    base_kpi_order = ["agm","sgm","tn","cogs","vce","price","cost","agm%","sgm%"]
+    if kpis:
+        full_kpis = kpis + ["price","cost","agm%","sgm%"]
+    else:
+        full_kpis = ["agm"]
+
+    for k in full_kpis:
+
+        cols_k = [
+            f"{k}_ACTUAL",
+            f"{k}_BDG",
+            f"{k}_FCS",
+            f"{k}_LY",
+            f"{k}_Δ ACT-BDG"
+        ]
+
+        cols_k = [c for c in cols_k if c in df_final.columns]
+
+        ordered_cols.extend(cols_k)
+
+    if not ordered_cols:
+        ordered_cols = [c for c in df_final.columns if "ACTUAL" in c or "Δ" in c]
+
+    final_cols = [c for c in GROUP_MAP[level] if c in df_final.columns] + ordered_cols
+
+    df_final = df_final[final_cols]
+
+
+    # ✅ 3. SORT (ilk KPI'ya göre)
+    if ordered_cols:
+        df_final = df_final.sort_values(ordered_cols[0], ascending=False)
+
+
 
     st.subheader("Main Table")
-    st.markdown(highlight(format_df(df_final)).to_html(escape=False,index=False),
-                unsafe_allow_html=True)
-    
+    html_table = highlight(format_df(df_final)).to_html(escape=False,index=False)
+
+    st.markdown(
+        f"""
+        <div style="
+            overflow-x: auto;
+            max-width: 100%;
+            border-radius: 10px;
+        ">
+            {html_table}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     base = f.groupby("scenario").agg({
         "tn": "sum",

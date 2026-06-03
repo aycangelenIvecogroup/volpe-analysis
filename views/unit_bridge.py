@@ -16,7 +16,7 @@ FILES = {
 
 # ==================================================
 # CLEAN
-# ==================================================
+# ================================================== 
 def clean_columns(df):
     df.columns = (
         df.columns.astype(str)
@@ -91,13 +91,28 @@ def color_logic(row):
             styles.append("")
             continue
 
-        val = row[col]
+        try:
+            val = float(str(row[col]).replace("pp","").replace("%","").replace(",",""))
+        except:
+            val = 0
+
+
+        # ✅ string → number convert
+        try:
+            v = float(
+                str(val)
+                .replace(",", "")
+                .replace("pp", "")
+                .replace("%", "")
+            )
+        except:
+            v = 0
 
         positive_good = metric not in inverted
 
-        if val > 0:
+        if v > 0:
             styles.append("color: green; font-weight: bold;" if positive_good else "color: red; font-weight: bold;")
-        elif val < 0:
+        elif v < 0:
             styles.append("color: red; font-weight: bold;" if positive_good else "color: green; font-weight: bold;")
         else:
             styles.append("")
@@ -116,6 +131,7 @@ def build_unit_table(df_group, scenarios):
         unit_cogs = row["cogs"] / u
         unit_vce = row["vce"] / u
         unit_agm = row["agm"] / u
+        unit_sgm = row["sgm"] / u
         unit_var = unit_price - unit_cogs - unit_vce - unit_agm
 
         return pd.Series({
@@ -123,7 +139,14 @@ def build_unit_table(df_group, scenarios):
             "COGS": unit_cogs,
             "VCE": unit_vce,
             "VAR": unit_var,
-            "AGM": unit_agm
+            "AGM": unit_agm,
+            "SGM": unit_sgm,
+            
+            "AGM %": (unit_agm / unit_price * 100) if unit_price != 0 else 0,
+            "VAR %": (unit_var / unit_price * 100) if unit_price != 0 else 0,
+            "SGM %": (unit_sgm / unit_price * 100) if unit_price != 0 else 0,
+
+
         })
 
     unit_df = df_group.apply(calc, axis=1)
@@ -136,9 +159,13 @@ def build_unit_table(df_group, scenarios):
         for s in scenarios:
             row[s] = unit_df.loc[s][metric] if s in unit_df.index else 0
 
+        
+        
         for s in scenarios:
             if s != "ACT":
                 row[f"Δ vs {s}"] = row["ACT"] - row[s]
+
+
 
         rows.append(row)
 
@@ -169,7 +196,7 @@ def build_total_table(df_group, scenarios):
         agm = get(s, "agm")
 
         var = tn - cogs - vce - agm
-        sgm = agm + var
+        sgm = get(s, "sgm")
 
         base[s] = {
             "UNITS": get(s, "units"),
@@ -192,9 +219,17 @@ def build_total_table(df_group, scenarios):
         for s in scenarios:
             row[s] = base[s][m]
 
+        
         for s in scenarios:
             if s != "ACT":
-                row[f"Δ vs {s}"] = row["ACT"] - row[s]
+
+                delta = row["ACT"] - row[s]
+
+                if "%" in m:
+                    row[f"Δ vs {s}"] = delta   # pp
+                else:
+                    row[f"Δ vs {s}"] = delta
+
 
         rows.append(row)
 
@@ -206,7 +241,30 @@ def build_total_table(df_group, scenarios):
 # ==================================================
 def show_table(df):
 
+    # ✅ metric yoksa oluştur
+    if "Metric" not in df.columns:
+        df["Metric"] = df.index
+
     df = df.copy()
+
+    # ✅ DELTA FORMAT (pp vs €)
+    for col in df.columns:
+        if "Δ" in col:
+
+            new_vals = []
+
+            for v, m in zip(df[col], df["Metric"]):
+                try:
+                    v_num = float(v)
+                except:
+                    v_num = 0
+
+                if "%" in str(m):
+                    new_vals.append(f"{v_num:+.2f} pp")
+                else:
+                    new_vals.append(f"{v_num:+,.0f}")
+
+            df[col] = new_vals
 
     # =========================
     # UNIT TABLE MI?
@@ -214,7 +272,7 @@ def show_table(df):
     is_unit = df["Metric"].astype(str).str.contains("Unit").any()
 
     # =========================
-    # BUILD FORMAT DICT
+    # FORMAT DICT
     # =========================
     format_dict = {}
 
@@ -223,29 +281,24 @@ def show_table(df):
         if col == "Metric":
             continue
 
+        # 🔥 DELTA kolonlarına format uygulama
+        if "Δ" in col:
+            continue
+
         # ✅ yüzde kolonları
         if "%" in col:
-            format_dict[col] = "{:.2f} %"
-
-        # ✅ delta kolonları
-        elif "Δ" in col:
-
-            # metric bazlı % delta (pp)
-            if df["Metric"].astype(str).str.contains("%").any():
-                format_dict[col] = "{:+.2f} pp"
-            else:
-                format_dict[col] = "{:+,.0f}"
+            format_dict[col] = "{:.2f}%"
 
         # ✅ unit table
         elif is_unit:
             format_dict[col] = "{:,.2f}"
 
-        # ✅ normal total values
+        # ✅ normal values
         else:
             format_dict[col] = "{:,.0f}"
 
     # =========================
-    # STYLE APPLY
+    # STYLE
     # =========================
     styled = df.style \
         .format(format_dict) \
@@ -284,9 +337,19 @@ def delta_background(row):
 
         val = row[col]
 
-        if val > 0:
+        try:
+            v = float(
+                str(val)
+                .replace(",", "")
+                .replace("pp", "")
+                .replace("%", "")
+            )
+        except:
+            v = 0
+
+        if v > 0:
             styles.append("background-color: #e6ffed;")
-        elif val < 0:
+        elif v < 0:
             styles.append("background-color: #ffe6e6;")
         else:
             styles.append("")
@@ -321,7 +384,10 @@ def render():
         df["customer"].dropna().unique()
     )
 
-    d0 = df[df["customer"].isin(customer)]
+    if customer:
+        d0 = df[df["customer"].isin(customer)]
+    else:
+        d0 = df.copy()
 
     levels = [
         ("CUSTOMER", []),
