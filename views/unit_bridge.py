@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-
+from io import BytesIO
 # ==================================================
 # PATH
 # ==================================================
@@ -235,7 +235,26 @@ def build_total_table(df_group, scenarios):
 
     return pd.DataFrame(rows)
 
+def to_excel(df):
 
+    output = BytesIO()
+
+    # ✅ kopya al (string delta bozmasın)
+    df_export = df.copy()
+
+    # ✅ delta kolonlarını temizle (pp, %, virgül kaldır)
+    for col in df_export.columns:
+        if "Δ" in col:
+            df_export[col] = df_export[col].astype(str)\
+                .str.replace("pp","")\
+                .str.replace("%","")\
+                .str.replace(",","")
+
+    # ✅ Excel yaz
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_export.to_excel(writer, index=False, sheet_name="Sheet1")
+
+    return output.getvalue()
 # ==================================================
 # DISPLAY
 # ==================================================
@@ -421,6 +440,12 @@ def render():
         st.subheader("Unit Table")
         unit_table = build_unit_table(df_group, scenarios)
         show_table(unit_table)
+        st.download_button(
+            label="⬇️ Download Unit Excel",
+            data=to_excel(unit_table),
+            file_name=f"unit_table_{level_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         # ===============================
         # TOTAL TABLE
@@ -428,6 +453,12 @@ def render():
         st.subheader("Total (No Unit)")
         total_table = build_total_table(df_group, scenarios)
         show_table(total_table)
+        st.download_button(
+            label="⬇️ Download Total Excel",
+            data=to_excel(total_table),
+            file_name=f"total_table_{level_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         st.divider()
 
