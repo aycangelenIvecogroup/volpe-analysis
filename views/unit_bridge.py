@@ -135,12 +135,13 @@ def build_unit_table(df_group, scenarios):
         unit_var = unit_price - unit_cogs - unit_vce - unit_agm
 
         return pd.Series({
-            "Unit Price": unit_price,
-            "COGS": unit_cogs,
-            "VCE": unit_vce,
-            "VAR": unit_var,
-            "AGM": unit_agm,
-            "SGM": unit_sgm,
+            
+            "COGS (€/unit)": unit_cogs,
+            "VCE (€/unit)": unit_vce,
+            "VAR (€/unit)": unit_var,
+            "AGM (€/unit)": unit_agm,
+            "SGM (€/unit)": unit_sgm,
+
             
             "AGM %": (unit_agm / unit_price * 100) if unit_price != 0 else 0,
             "VAR %": (unit_var / unit_price * 100) if unit_price != 0 else 0,
@@ -186,7 +187,8 @@ def build_total_table(df_group, scenarios):
 
     for s in scenarios:
         tn = get(s, "tn")
-
+    # ✅ total TN (mix için gerekli)
+    total_tn = df_group["tn"].sum() if "tn" in df_group.columns else 0
     base = {}
 
     for s in scenarios:
@@ -200,15 +202,16 @@ def build_total_table(df_group, scenarios):
 
         base[s] = {
             "UNITS": get(s, "units"),
-            "TN": tn,
-            "COGS": cogs,
-            "VCE": vce,
-            "VAR": var,
-            "AGM": agm,
-            "SGM": sgm,
+            "TN (€)": tn,
+            "COGS(€)": cogs,
+            "VCE(€)": vce,
+            "VAR(€)": var,
+            "AGM(€)": agm,
+            "SGM(€)": sgm,
             "AGM %": (agm / tn * 100) if tn != 0 else 0,
             "SGM %": (sgm / tn * 100) if tn != 0 else 0,
             "VAR %": (var / tn * 100) if tn != 0 else 0,
+            "MIX(tn/total_tn) %": (tn / total_tn * 100) if total_tn != 0 else 0,
         }
 
     metrics = list(base["ACT"].keys())
@@ -285,42 +288,28 @@ def show_table(df):
 
             df[col] = new_vals
 
-    # =========================
-    # UNIT TABLE MI?
-    # =========================
-    is_unit = df["Metric"].astype(str).str.contains("Unit").any()
+    # ✅ STYLE OBJECT
+    styled = df.style
 
-    # =========================
-    # FORMAT DICT
-    # =========================
-    format_dict = {}
+    # ✅ ROW-BASED FORMAT
+    for i, metric in enumerate(df["Metric"]):
 
-    for col in df.columns:
+        row = df.index[i]
 
-        if col == "Metric":
-            continue
+        # sadece numeric kolonlar
+        numeric_cols = [c for c in df.columns if c != "Metric" and "Δ" not in c]
 
-        # 🔥 DELTA kolonlarına format uygulama
-        if "Δ" in col:
-            continue
+        if "%" in str(metric):
+            styled = styled.format("{:.2f} %", subset=(row, numeric_cols))
 
-        # ✅ yüzde kolonları
-        if "%" in col:
-            format_dict[col] = "{:.2f}%"
+        elif "€/unit" in str(metric):
+            styled = styled.format("{:,.2f} €", subset=(row, numeric_cols))
 
-        # ✅ unit table
-        elif is_unit:
-            format_dict[col] = "{:,.2f}"
+        elif "€" in str(metric):
+            styled = styled.format("{:,.0f} €", subset=(row, numeric_cols))
 
-        # ✅ normal values
-        else:
-            format_dict[col] = "{:,.0f}"
-
-    # =========================
-    # STYLE
-    # =========================
-    styled = df.style \
-        .format(format_dict) \
+    # ✅ STYLE
+    styled = styled \
         .apply(color_logic, axis=1) \
         .apply(delta_background, axis=1) \
         .set_properties(**{
@@ -343,6 +332,7 @@ def show_table(df):
         ])
 
     st.dataframe(styled, use_container_width=True)
+
 
 def delta_background(row):
 
