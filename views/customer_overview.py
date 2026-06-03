@@ -154,12 +154,12 @@ def render_customer_overview():
         st.title("📊 Customer Performance")
 
     with col_controls:
-        
+
         st.markdown("### ⚙️ Controls")
 
         # ✅ KPI DETAILS
         selected_scenarios = st.multiselect(
-            "📊 KPI Details",
+            "📊 Select Scenarios",
             ["ACT", "BDG", "FCS1", "LY"],
             default=[]
         )
