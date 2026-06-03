@@ -437,7 +437,10 @@ def render():
         # ===============================
         # UNIT TABLE
         # ===============================
-        st.subheader("Unit Table")
+                
+        st.subheader("🟢 Unit Table (€/unit view)")
+        st.caption("Values normalized per unit (€/unit). Derived from total values divided by units to show efficiency and margin structure.")
+
         unit_table = build_unit_table(df_group, scenarios)
         show_table(unit_table)
         st.download_button(
@@ -450,7 +453,10 @@ def render():
         # ===============================
         # TOTAL TABLE
         # ===============================
-        st.subheader("Total (No Unit)")
+        
+        st.subheader("🔵 Total (absolute € view)")
+        st.caption("Aggregated values directly from source data (after filtering and grouping). Represents total financial results in absolute €.")
+
         total_table = build_total_table(df_group, scenarios)
         show_table(total_table)
         st.download_button(
