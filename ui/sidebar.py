@@ -48,6 +48,9 @@ def render_sidebar():
 
         st.caption("Analyze margin drivers")
 
+        if st.button("📊 Wholegoods Overview"):
+            st.session_state.page = "📊 Wholegoods Overview"
+
         st.markdown("---")
         st.caption("Aycan Gelen")
 

@@ -137,6 +137,10 @@ def pp(x):
     if pd.isna(x):
         return ""
     return f"{x:.1f} pp"
+def number(x):
+    if pd.isna(x):
+        return ""
+    return f"{x:,.2f}"   # 2 digit ✅
 
 # ======================
 # PAGE ✅
@@ -164,11 +168,19 @@ def render_customer_overview():
             default=[]
         )
 
-        # ✅ SLIDER ALTTA
-        months = st.slider(
-            "Months",
-            1, 12, 3
+        month_map = {
+            "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4,
+            "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
+            "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+        }
+
+        selected_month = st.selectbox(
+            "Select last available month",
+            list(month_map.keys()),
+            index=3  # ✅ Apr default
         )
+
+        months = month_map[selected_month]
 
         
        
@@ -231,7 +243,7 @@ def render_customer_overview():
 
     pivot = pivot[pivot["tn_ACT"] > 0]
     # ✅ EN BÜYÜK CUSTOMER ÜSTTE
-    pivot = pivot.sort_values("tn_ACT", ascending=False)
+    pivot = pivot.sort_values("tn_ACT", ascending=True)
     threshold = 1_000_000
 
     pivot.loc[pivot["tn_BDG"] < threshold, "Δ_BDG_TN"] = np.nan
@@ -242,6 +254,10 @@ def render_customer_overview():
     # KPI ✅
     # ======================
     st.markdown("## Overview")
+    st.caption(f"""
+    RunRate is calculated based on performance up to **{selected_month}**
+    ({months} months YTD), annualized to full year.
+    """)
 
     c1, c2, c3 = st.columns(3)
 
@@ -266,8 +282,8 @@ def render_customer_overview():
         rows.append({
             "Customer": r["customer"],
             "Type": "AGM",
-            "Metric": f"AGM YTD: {euro(r['agm_ACT'])} | RunRate: {euro(r['agm_runrate'])}",
-            "ACT (€)": euro(r["agm_ACT"]),
+            "Metric": f"AGM RunRate ({selected_month} YTD): {euro(r['agm_runrate'])}",
+            "ACT (€)": euro(r["agm_runrate"]),
             "Margin (%)": pct(r["margin_YTD"] * 100),
             "Δ BDG": pp(r["Δ_BDG_margin"]),
             "Δ FCS1": pp(r["Δ_FCS1_margin"]),
@@ -278,8 +294,8 @@ def render_customer_overview():
         rows.append({
             "Customer": r["customer"],
             "Type": "TN",
-            "Metric": f"TN YTD: {euro(r['tn_ACT'])} | RunRate: {euro(r['tn_runrate'])}",
-            "ACT (€)": euro(r["tn_ACT"]),
+            "Metric": f"TN RunRate ({selected_month} YTD): {euro(r['tn_runrate'])}",
+            "ACT (€)": euro(r["tn_runrate"]),
             "Margin (%)": "",
             "Δ BDG": pct(r["Δ_BDG_TN"]),
             "Δ FCS1": pct(r["Δ_FCS1_TN"]),
@@ -305,7 +321,14 @@ def render_customer_overview():
 
 
     styled = final_df.style.map(highlight, subset=["Δ BDG","Δ FCS1","Δ LY"])
+    st.markdown("""
+    🟢 **Metric Definitions**
 
+    - € Values → **RunRate (Annualized)**
+    - % Values → **Actual (YTD)**
+    - Δ (pp) → **Actual Margin Difference**
+    - Δ (%) → **RunRate vs Target**
+    """)
     st.dataframe(styled, use_container_width=True, height=650)
 
         # ======================
@@ -317,26 +340,122 @@ def render_customer_overview():
 
     if "ACT" in selected_scenarios:
         with st.expander("📘 ACT Details"):
+
+            df_act = pivot[[
+                "customer",
+                "tn_ACT",
+                "agm_ACT",
+                "margin_YTD",
+                "tn_runrate",
+                "agm_runrate"
+            ]].copy()
+
+            # ===== FORMAT =====
+            df_act["TN"] = df_act["tn_ACT"].apply(number)
+            df_act["AGM (€)"] = df_act["agm_ACT"].apply(euro)
+            df_act["Margin (%)"] = df_act["margin_YTD"].apply(lambda x: f"{x*100:.2f}%")
+
+            df_act["RunRate TN"] = df_act["tn_runrate"].apply(euro)
+            df_act["RunRate AGM"] = df_act["agm_runrate"].apply(euro)
+
             st.dataframe(
-                pivot[["customer","tn_ACT","agm_ACT","margin_YTD"]]
+                df_act[[
+                    "customer",
+                    "TN",
+                    "AGM (€)",
+                    "Margin (%)",
+                    "RunRate TN",
+                    "RunRate AGM"
+                ]],
+                use_container_width=True
             )
+
 
     if "BDG" in selected_scenarios:
         with st.expander("💰 Budget (BDG)"):
+
+            df_bdg = pivot[[
+                "customer",
+                "tn_ACT","tn_BDG",
+                "agm_ACT","agm_BDG",
+                "margin_YTD","margin_BDG"
+            ]].copy()
+
+            df_bdg["TN ACT"] = df_bdg["tn_ACT"].apply(number)
+            df_bdg["TN BDG"] = df_bdg["tn_BDG"].apply(number)
+
+            df_bdg["AGM ACT (€)"] = df_bdg["agm_ACT"].apply(euro)
+            df_bdg["AGM BDG (€)"] = df_bdg["agm_BDG"].apply(euro)
+
+            df_bdg["Margin ACT (%)"] = df_bdg["margin_YTD"].apply(lambda x: f"{x*100:.2f}%")
+            df_bdg["Margin BDG (%)"] = df_bdg["margin_BDG"].apply(lambda x: f"{x*100:.2f}%")
+
             st.dataframe(
-                pivot[["customer","tn_BDG","agm_BDG","margin_BDG"]]
+                df_bdg[[
+                    "customer",
+                    "TN ACT","TN BDG",
+                    "AGM ACT (€)","AGM BDG (€)",
+                    "Margin ACT (%)","Margin BDG (%)"
+                ]],
+                use_container_width=True
             )
 
     if "FCS1" in selected_scenarios:
         with st.expander("🔮 Forecast (FCS1)"):
+
+            df_fcs = pivot[[
+                "customer",
+                "tn_ACT","tn_FCS1",
+                "agm_ACT","agm_FCS1",
+                "margin_YTD","margin_FCS1"
+            ]].copy()
+
+            df_fcs["TN ACT"] = df_fcs["tn_ACT"].apply(number)
+            df_fcs["TN FCS"] = df_fcs["tn_FCS1"].apply(number)
+
+            df_fcs["AGM ACT (€)"] = df_fcs["agm_ACT"].apply(euro)
+            df_fcs["AGM FCS (€)"] = df_fcs["agm_FCS1"].apply(euro)
+
+            df_fcs["Margin ACT (%)"] = df_fcs["margin_YTD"].apply(lambda x: f"{x*100:.2f}%")
+            df_fcs["Margin FCS (%)"] = df_fcs["margin_FCS1"].apply(lambda x: f"{x*100:.2f}%")
+
             st.dataframe(
-                pivot[["customer","tn_FCS1","agm_FCS1","margin_FCS1"]]
+                df_fcs[[
+                    "customer",
+                    "TN ACT","TN FCS",
+                    "AGM ACT (€)","AGM FCS (€)",
+                    "Margin ACT (%)","Margin FCS (%)"
+                ]],
+                use_container_width=True
             )
 
     if "LY" in selected_scenarios:
         with st.expander("📉 Last Year (LY)"):
+
+            df_ly = pivot[[
+                "customer",
+                "tn_ACT","tn_LY",
+                "agm_ACT","agm_LY",
+                "margin_YTD","margin_LY"
+            ]].copy()
+
+            df_ly["TN ACT"] = df_ly["tn_ACT"].apply(number)
+            df_ly["TN LY"] = df_ly["tn_LY"].apply(number)
+
+            df_ly["AGM ACT (€)"] = df_ly["agm_ACT"].apply(euro)
+            df_ly["AGM LY (€)"] = df_ly["agm_LY"].apply(euro)
+
+            df_ly["Margin ACT (%)"] = df_ly["margin_YTD"].apply(lambda x: f"{x*100:.2f}%")
+            df_ly["Margin LY (%)"] = df_ly["margin_LY"].apply(lambda x: f"{x*100:.2f}%")
+
             st.dataframe(
-                pivot[["customer","tn_LY","agm_LY","margin_LY"]]
+                df_ly[[
+                    "customer",
+                    "TN ACT","TN LY",
+                    "AGM ACT (€)","AGM LY (€)",
+                    "Margin ACT (%)","Margin LY (%)"
+                ]],
+                use_container_width=True
             )
 
 
@@ -572,7 +691,25 @@ def render_customer_overview():
 
 
     st.markdown("---")
-    st.markdown("## 📈 RunRate Performance Analysis")
+    st.markdown(f"## 📈 RunRate Performance Analysis ({selected_month} YTD)")
+    st.caption("""
+    All € values are RunRate-based (annualized).
+    Margins (%) are based on Actual YTD performance.
+    """)
+    
+    
+    st.info(f"""
+    💡 **How to read this table**
+
+    • Based on data up to **{selected_month}**  
+    • {months} months YTD used  
+    • € = RunRate (annualized)  
+    • % = Actual performance  
+    """)
+
+    st.info(f"📅 Data loaded up to {selected_month}")
+
+
 
     # ✅ BURAYA KOY ↓↓↓
     def highlight_delta(val):
@@ -650,13 +787,76 @@ def render_customer_overview():
         d["Insight"] = d.apply(insight, axis=1)
 
         # ===== SORT =====
-        d = d.sort_values("Δ_TN", ascending=False)
+        d = d.sort_values("Δ_margin", ascending=True)
 
         return d[[
             "customer",
             "RunRate TN", f"{ref} TN",
             "RunRate AGM", f"{ref} AGM",
             "Margin RunRate", f"Margin {ref}",
+            "Δ TN", "Δ Margin",
+            "Insight"
+        ]]
+    
+    def build_analysis_actual(df, ref):
+
+        d = df.copy()
+
+        # ===== ACTUAL BASE =====
+        d["tn_actual"] = d["tn_ACT"]
+        d["tn_ref"] = d[f"tn_{ref}"]
+
+        d["agm_actual"] = d["agm_ACT"]
+        d["agm_ref"] = d[f"agm_{ref}"]
+
+        d["margin_actual"] = d["margin_YTD"]
+        d["margin_ref"] = d[f"margin_{ref}"]
+
+        # ===== DELTA =====
+        d["Δ_TN_abs"] = d["tn_actual"] - d["tn_ref"]
+        d["Δ_margin"] = (d["margin_actual"] - d["margin_ref"]) * 100
+
+        # ===== FORMAT =====
+        d["Actual TN"] = d["tn_actual"].apply(euro)
+        d[f"{ref} TN"] = d["tn_ref"].apply(euro)
+
+        d["Actual AGM"] = d["agm_actual"].apply(euro)
+        d[f"{ref} AGM"] = d["agm_ref"].apply(euro)
+
+        d["Margin Actual"] = d["margin_actual"].apply(lambda x: f"{x*100:.1f}%")
+        d[f"Margin {ref}"] = d["margin_ref"].apply(lambda x: f"{x*100:.1f}%")
+
+        d["Δ TN"] = d["Δ_TN_abs"].apply(euro)
+        d["Δ Margin"] = d["Δ_margin"].apply(lambda x: f"{x:+.1f} pp")
+
+        # ===== INSIGHT =====
+        def insight(row):
+            tn = row["Δ_TN_abs"]
+            m = row["Δ_margin"]
+
+            if pd.isna(tn) or pd.isna(m):
+                return ""
+
+            if m > 0 and tn > 0:
+                return "Margin ↑ & Volume ↑"
+            elif m > 0 and tn < 0:
+                return "Margin ↑ & Volume ↓"
+            elif m < 0 and tn > 0:
+                return "Margin ↓ & Volume ↑"
+            elif m < 0 and tn < 0:
+                return "Margin ↓ & Volume ↓"
+
+            return ""
+
+        d["Insight"] = d.apply(insight, axis=1)
+
+        d = d.sort_values("Δ_margin", ascending=True)
+
+        return d[[
+            "customer",
+            "Actual TN", f"{ref} TN",
+            "Actual AGM", f"{ref} AGM",
+            "Margin Actual", f"Margin {ref}",
             "Δ TN", "Δ Margin",
             "Insight"
         ]]
@@ -701,6 +901,39 @@ def render_customer_overview():
         
         st.dataframe(
             df_fcs.style
+                .map(highlight_delta, subset=["Δ TN", "Δ Margin"])
+                .map(highlight_problem, subset=["Insight"]),
+            use_container_width=True,
+            height=500
+        )
+
+    st.markdown("---")
+    st.markdown("## 📊 Actual Performance Analysis")
+
+    col1, col2 = st.columns(2)
+
+    # ===== BDG ACTUAL =====
+    with col1:
+        st.markdown("### 💰 Vs Budget (Actual Ranking)")
+
+        df_bdg_act = build_analysis_actual(pivot, "BDG")
+
+        st.dataframe(
+            df_bdg_act.style
+                .map(highlight_delta, subset=["Δ TN", "Δ Margin"])
+                .map(highlight_problem, subset=["Insight"]),
+            use_container_width=True,
+            height=500
+        )
+
+    # ===== FCS ACTUAL =====
+    with col2:
+        st.markdown("### 🔮 Vs Forecast (Actual Ranking)")
+
+        df_fcs_act = build_analysis_actual(pivot, "FCS1")
+
+        st.dataframe(
+            df_fcs_act.style
                 .map(highlight_delta, subset=["Δ TN", "Δ Margin"])
                 .map(highlight_problem, subset=["Insight"]),
             use_container_width=True,
