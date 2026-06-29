@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-BASE_PATH = Path("data/raw")
+BASE_PATH = Path("data/clean excel files")  # Adjust the path as needed
 
 # ======================
 # LOAD ✅ (DOĞRU STRUCTURE)
@@ -30,13 +30,13 @@ def load_data():
         )
         return df
 
-    act = pd.read_excel(BASE_PATH / "product_raw_db_c03.xlsx", sheet_name="Table1")
+    act = pd.read_excel(BASE_PATH / "c05_2026_clean.xlsx")
     act = clean_cols(act)
 
     act = act.rename(columns={
         "CUSTOMER MERGE": "customer",
-        "ACT TN": "tn",
-        "ACT AGM": "agm"
+        "TN": "tn",
+        "AGM": "agm"
     })[["customer", "tn", "agm"]]
 
     act = fix_customer(act)
@@ -52,7 +52,7 @@ def load_data():
 
 
     # === BDG ===
-    bdg = pd.read_excel(BASE_PATH / "product_raw_db_bdg26.xlsx", sheet_name="Table2")
+    bdg = pd.read_excel(BASE_PATH / "BDG2026_v4_clean.xlsx")
     bdg = clean_cols(bdg)
 
     bdg = bdg.rename(columns={
@@ -60,6 +60,7 @@ def load_data():
         "TN": "tn",
         "AGM": "agm"
     })[["customer", "tn", "agm"]]
+
 
     bdg = fix_customer(bdg)
 
@@ -73,13 +74,13 @@ def load_data():
     bdg["SCENARIO"] = "BDG"
 
     # === LY ===
-    ly = pd.read_excel(BASE_PATH / "product_raw_db_c12_2025.xlsx", sheet_name="Table1")
+    ly = pd.read_excel(BASE_PATH / "LY25_clean.xlsx")
     ly = clean_cols(ly)
 
     ly = ly.rename(columns={
         "CUSTOMER MERGE": "customer",
-        "ACT TN": "tn",
-        "ACT AGM": "agm"
+        "TN": "tn",
+        "AGM": "agm"
     })[["customer", "tn", "agm"]]
 
     ly = fix_customer(ly)
@@ -93,14 +94,15 @@ def load_data():
 
     ly["SCENARIO"] = "LY"
 
-    fcs = pd.read_excel(BASE_PATH / "raw_fcs1_26.xlsx")
+    fcs = pd.read_excel(BASE_PATH / "fcst1_2026_clean.xlsx")
     fcs = clean_cols(fcs)
 
     fcs = fcs.rename(columns={
         "CUSTOMER MERGE": "customer",
-        "FY TN": "tn",
+        "TN": "tn",
         "AGM": "agm"
     })[["customer", "tn", "agm"]]
+
 
     fcs = fix_customer(fcs)
 
