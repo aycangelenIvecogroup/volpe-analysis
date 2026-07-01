@@ -33,6 +33,11 @@ def render_sidebar():
                 st.session_state.page = label
 
         # menu
+
+        if st.button("📊 Month Comparison Dashboard"):
+            st.session_state.page = "📊 Month Comparison Dashboard"
+        st.caption("Compare performance across months-bdg-fcst-ly")
+
         if st.button("📊 Customer Overview"):
             st.session_state.page = "📊 Customer Overview"
 
@@ -50,6 +55,7 @@ def render_sidebar():
 
         if st.button("📊 Wholegoods Overview"):
             st.session_state.page = "📊 Wholegoods Overview"
+
 
         st.markdown("---")
         st.caption("Aycan Gelen")

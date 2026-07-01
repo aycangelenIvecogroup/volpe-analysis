@@ -29,6 +29,20 @@ def load_all_data():
 
         df = clean_cols(df)
 
+        # CUSTOMER NORMALIZATION
+        if "customer_merge" in df.columns:
+
+            df["customer_merge"] = (
+                df["customer_merge"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
+
+            df["customer_merge"] = df["customer_merge"].replace({
+                "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+            })
+
         df["scenario"] = scenario
 
         dfs.append(df)

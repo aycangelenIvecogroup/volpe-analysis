@@ -6,6 +6,7 @@ from views.customer_overview import render_customer_overview
 from views.scenario_builder import render_scenario_builder
 from ui.sidebar import render_sidebar
 from views.wholegoods_page import render_wholegoods_page
+from views.month_comparison_dashboard import render_month_comparison_dashboard
 
 try:
     from dotenv import load_dotenv
@@ -72,6 +73,7 @@ pages = {
     "🧪 Scenario Builder": render_scenario_builder,
     "📊 Unit Bridge": render_unit_bridge,
     "📊 Wholegoods Overview": render_wholegoods_page,
+    "📊 Month Comparison Dashboard": render_month_comparison_dashboard
 }
 
 selected_page = render_sidebar()

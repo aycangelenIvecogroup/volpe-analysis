@@ -22,12 +22,20 @@ def load_data():
         return df
 
     def fix_customer(df):
+
         df["customer"] = (
             df["customer"]
             .astype(str)
             .str.strip()
             .str.upper()
         )
+
+        customer_mapping = {
+            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+        }
+
+        df["customer"] = df["customer"].replace(customer_mapping)
+
         return df
 
     act = pd.read_excel(BASE_PATH / "c05_2026_clean.xlsx")

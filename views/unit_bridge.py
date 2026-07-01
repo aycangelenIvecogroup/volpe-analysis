@@ -53,6 +53,17 @@ def load_all():
             "SGM": "sgm",
             "AGM": "agm"
         })
+        # CUSTOMER NORMALIZATION
+        df["customer"] = (
+            df["customer"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+
+        df["customer"] = df["customer"].replace({
+            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+        })
 
         for c in ["units", "tn", "cogs", "vce", "sgm", "agm"]:
             if c not in df.columns:
