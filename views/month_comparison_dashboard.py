@@ -3,11 +3,13 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-# =====================================================
-# CONFIG
-# =====================================================
 
-BASE_PATH = Path(r"C:\projects\volpe_analysis\data\clean excel files")
+
+BASE_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "clean excel files"
+)
 
 MONTH_FILES = {
     "Apr-26": BASE_PATH / "c04_2026_clean.xlsx",
