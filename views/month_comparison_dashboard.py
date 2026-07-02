@@ -301,6 +301,9 @@ def units_fmt(x):
 BASE_KPIS = [
     "units",
     "tn",
+    "var",
+    "price",
+    "cost",
     "agm",
     "agm_pct",
     "sgm",
@@ -329,6 +332,7 @@ def build_summary_table(
         )[[
             "units",
             "tn",
+
             "agm",
             "sgm",
             "cogs",
@@ -362,6 +366,9 @@ def build_summary_table(
         mappings = [
             ("units", False),
             ("tn", False),
+            ("var", False),
+            ("price", False),
+            ("cost", False),
             ("agm", False),
             ("sgm", False),
             ("agm_pct", True),
@@ -446,9 +453,12 @@ def format_summary_table(df):
             col.startswith("tn_")
             or col.startswith("agm_")
             or col.startswith("sgm_")
-            or col.startswith("Δ_tn")
-            or col.startswith("Δ_agm")
-            or col.startswith("Δ_sgm")
+            or col.startswith("var_")
+            or col.startswith("price_")
+            or col.startswith("cost_")
+            or col.startswith("Δ_var")
+            or col.startswith("Δ_price")
+            or col.startswith("Δ_cost")
         ):
             out[col] = out[col].apply(euro)
 
@@ -458,46 +468,70 @@ def format_summary_table(df):
 # =====================================================
 # HTML DELTA COLOR
 # =====================================================
-
 def highlight_summary(df):
 
     df = df.copy()
 
+    reverse_metrics = [
+        "cost",
+        "cogs",
+        "var"
+    ]
+
     for col in df.columns:
 
-        if not col.startswith("Δ_"):
+        if not col.startswith("Δ"):
             continue
+
+        is_reverse = any(
+            m in col.lower()
+            for m in reverse_metrics
+        )
 
         def colorize(v):
 
             txt = str(v)
 
             try:
-
-                num = (
+                num = float(
                     txt
-                    .replace("€", "")
-                    .replace("M", "")
-                    .replace("K", "")
-                    .replace("pp", "")
-                    .replace("%", "")
-                    .replace(",", "")
+                    .replace("€","")
+                    .replace("M","")
+                    .replace("K","")
+                    .replace("pp","")
+                    .replace("%","")
+                    .replace(",","")
                     .strip()
                 )
-
-                num = float(num)
-
             except:
                 return txt
 
-            color = "green" if num > 0 else "red"
+            if is_reverse:
 
-            if num == 0:
-                color = "black"
+                if num > 0:
+                    color = "red"
+
+                elif num < 0:
+                    color = "green"
+
+                else:
+                    color = "black"
+
+            else:
+
+                if num > 0:
+                    color = "green"
+
+                elif num < 0:
+                    color = "red"
+
+                else:
+                    color = "black"
 
             return (
-                f"<span style='color:{color};"
-                f"font-weight:bold'>{txt}</span>"
+                f"<span style='color:{color};font-weight:bold'>"
+                f"{txt}"
+                f"</span>"
             )
 
         df[col] = df[col].apply(colorize)
@@ -586,19 +620,18 @@ def render_filters(df):
 
 
     selected_kpis = st.multiselect(
-    "KPIs",
-    [
-        "units",
-        "tn",
-        "agm",
-        "agm_pct",
-        "sgm",
-        "sgm_pct"
-    ],
-    default=[
-        "agm",
-        "agm_pct"
-    ]
+        "KPIs",
+        [
+            "units",
+            "tn",
+            "var",
+            "price",
+            "cost",
+            "agm",
+            "agm_pct",
+            "sgm",
+            "sgm_pct"
+        ],
 )
 
     return (
@@ -669,6 +702,13 @@ def render_executive_section(
         .replace("Δ_units_vs_", "Δ Units vs ")
         .replace("Δ_sgm_vs_", "Δ SGM vs ")
         .replace("Δ_sgm_pct_vs_", "Δ SGM % vs ")
+        .replace("var_", "VAR ")
+        .replace("price_", "PRICE ")
+        .replace("cost_", "COST ")
+
+        .replace("Δ_var_vs_", "Δ VAR vs ")
+        .replace("Δ_price_vs_", "Δ PRICE vs ")
+        .replace("Δ_cost_vs_", "Δ COST vs ")
         for c in display_df.columns
     ]
 
@@ -754,6 +794,9 @@ def build_detail_table(
     metrics = [
         "units",
         "tn",
+        "var",
+        "price",
+        "cost",
         "agm",
         "sgm",
         "agm_pct",
@@ -834,9 +877,12 @@ def format_detail_table(df):
             col.startswith("tn_")
             or col.startswith("agm_")
             or col.startswith("sgm_")
-            or col.startswith("Δ_tn")
-            or col.startswith("Δ_agm")
-            or col.startswith("Δ_sgm")
+            or col.startswith("var_")
+            or col.startswith("price_")
+            or col.startswith("cost_")
+            or col.startswith("Δ_var")
+            or col.startswith("Δ_price")
+            or col.startswith("Δ_cost")
         ):
             out[col] = out[col].apply(euro)
 
@@ -938,7 +984,25 @@ def build_unit_table(
         ]]
         .sum()
     )
+    
+    agg["var"] = (
+        agg["tn"]
+        - agg["cogs"]
+        - agg["vce"]
+        - agg["agm"]
+    )
 
+    agg["price"] = np.where(
+        agg["units"] != 0,
+        agg["tn"] / agg["units"],
+        0
+    )
+
+    agg["cost"] = np.where(
+        agg["units"] != 0,
+        agg["cogs"] / agg["units"],
+        0
+    )
     for metric in ["tn", "cogs", "vce", "agm", "sgm"]:
 
         agg[f"{metric}_unit"] = np.where(
@@ -951,6 +1015,9 @@ def build_unit_table(
         index=group_cols,
         columns="scenario",
         values=[
+            "price",
+            "cost",
+            "var",
             "tn_unit",
             "cogs_unit",
             "vce_unit",
@@ -968,6 +1035,9 @@ def build_unit_table(
     unit_tbl = unit_tbl.reset_index()
 
     metrics = [
+        "price",
+        "cost",
+        "var",
         "tn_unit",
         "cogs_unit",
         "vce_unit",
