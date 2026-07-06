@@ -31,7 +31,9 @@ def load_data():
         )
 
         customer_mapping = {
-            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
+            "ATLAS COPCO_NC": "ATLAS COPCO",
+            "YANMAR ITALY": "YANMAR"
         }
 
         df["customer"] = df["customer"].replace(customer_mapping)

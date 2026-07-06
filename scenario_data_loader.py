@@ -40,7 +40,9 @@ def load_all_data():
             )
 
             df["customer_merge"] = df["customer_merge"].replace({
-                "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+                "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
+                "ATLAS COPCO_NC": "ATLAS COPCO",
+                "YANMAR ITALY": "YANMAR"
             })
 
         df["scenario"] = scenario

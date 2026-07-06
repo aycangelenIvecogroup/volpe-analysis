@@ -111,26 +111,36 @@ def standardize(df):
         .str.upper()
     )
     customer_mapping = {
-        "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+        "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
+        "ATLAS COPCO_NC": "ATLAS COPCO",
+        "YANMAR ITALY": "YANMAR"
     }
-
     df["customer_merge"] = (
         df["customer_merge"]
         .replace(customer_mapping)
     )
-
+    family_mapping = {
+            "ATS": "LOOSE PARTS",
+        }
     df["family"] = (
         df["family"]
         .astype(str)
         .str.strip()
+        .replace(family_mapping)
     )
-
+    
+    product_mapping = {
+            "ATS": "LOOSE PARTS",
+        }
     df["product"] = (
         df["product"]
         .astype(str)
         .str.strip()
+        .replace(product_mapping)
     )
-
+    pn_allestimento_mapping = {
+            "ATS": "LOOSE PARTS",   
+        }
     df["pn_allestimento"] = (
         df["pn_allestimento"]
         .fillna("UNKNOWN")
@@ -138,6 +148,7 @@ def standardize(df):
         .replace(["nan", "NaN", "None"], "UNKNOWN")
         .str.replace(".0", "", regex=False)
         .str.strip()
+        .replace(pn_allestimento_mapping)
     )
 
     return df
@@ -537,8 +548,35 @@ def highlight_summary(df):
         df[col] = df[col].apply(colorize)
 
     return df
+def highlight_unit_table(df):
 
+    delta_cols = [
+        c
+        for c in df.columns
+        if str(c).startswith("Δ")
+    ]
 
+    if not delta_cols:
+        return df.style
+
+    def colorize(v):
+
+        try:
+            num = float(v)
+        except:
+            return ""
+
+        if num > 0:
+            return "color:green;font-weight:bold;"
+        elif num < 0:
+            return "color:red;font-weight:bold;"
+
+        return ""
+
+    return df.style.map(
+        colorize,
+        subset=delta_cols
+    )
 # =====================================================
 # FILTER AREA
 # =====================================================
@@ -1032,8 +1070,6 @@ def build_unit_table(
         for m, s in unit_tbl.columns
     ]
 
-    unit_tbl = unit_tbl.reset_index()
-
     metrics = [
         "price",
         "cost",
@@ -1044,6 +1080,8 @@ def build_unit_table(
         "agm_unit",
         "sgm_unit"
     ]
+
+    unit_tbl = unit_tbl.reset_index()
 
     for comp in compare_scenarios:
 
@@ -1061,6 +1099,55 @@ def build_unit_table(
                     unit_tbl[base_col]
                     - unit_tbl[comp_col]
                 )
+
+    ordered_cols = group_cols.copy()
+
+    for metric in metrics:
+
+        base_col = f"{metric}_{base_scenario}"
+
+        if base_col in unit_tbl.columns:
+            ordered_cols.append(base_col)
+
+        for comp in compare_scenarios:
+
+            comp_col = f"{metric}_{comp}"
+            delta_col = f"Δ_{metric}_vs_{comp}"
+
+            if comp_col in unit_tbl.columns:
+                ordered_cols.append(comp_col)
+
+            if delta_col in unit_tbl.columns:
+                ordered_cols.append(delta_col)
+
+    unit_tbl = unit_tbl[
+        [c for c in ordered_cols if c in unit_tbl.columns]
+    ]
+
+    unit_tbl.columns = [
+        str(c)
+        .replace("price_", "PRICE ")
+        .replace("cost_", "COST ")
+        .replace("var_", "VAR ")
+        .replace("tn_unit_", "TN/unit ")
+        .replace("cogs_unit_", "COGS/unit ")
+        .replace("vce_unit_", "VCE/unit ")
+        .replace("agm_unit_", "AGM/unit ")
+        .replace("sgm_unit_", "SGM/unit ")
+
+        .replace("Δ_price_vs_", "Δ PRICE vs ")
+        .replace("Δ_cost_vs_", "Δ COST vs ")
+        .replace("Δ_var_vs_", "Δ VAR vs ")
+
+        .replace("Δ_tn_unit_vs_", "Δ TN/unit vs ")
+        .replace("Δ_cogs_unit_vs_", "Δ COGS/unit vs ")
+        .replace("Δ_vce_unit_vs_", "Δ VCE/unit vs ")
+        .replace("Δ_agm_unit_vs_", "Δ AGM/unit vs ")
+        .replace("Δ_sgm_unit_vs_", "Δ SGM/unit vs ")
+
+        for c in unit_tbl.columns
+    ]
+
 
     return unit_tbl
 
@@ -1173,7 +1260,7 @@ def render_driver_section(
 
         st.dataframe(
             tmp,
-            use_container_width=True
+            width="stretch"
         )
 
     with col2:
@@ -1185,7 +1272,7 @@ def render_driver_section(
 
         st.dataframe(
             tmp,
-            use_container_width=True
+            width="stretch"
         )
 
 
@@ -1297,19 +1384,15 @@ def render():
         compare_scenarios
     )
 
-    unit_display = unit_df.copy()
-
-    for col in unit_display.columns:
-
-        if "_unit_" in col:
-            unit_display[col] = unit_display[col].apply(
-                lambda x: f"€ {x:,.0f}"
-            )
+    styled_unit = highlight_unit_table(unit_df)
 
     st.dataframe(
-        unit_display,
-        use_container_width=True
+        styled_unit,
+        width="stretch"
     )
+
+
+
 
     st.divider()
 

@@ -62,7 +62,9 @@ def load_all():
         )
 
         df["customer"] = df["customer"].replace({
-            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH"
+            "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
+            "ATLAS COPCO_NC": "ATLAS COPCO",
+            "YANMAR ITALY": "YANMAR"
         })
 
         for c in ["units", "tn", "cogs", "vce", "sgm", "agm"]:
