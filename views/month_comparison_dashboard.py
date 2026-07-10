@@ -2,7 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from services.comments_db import (
+    add_comment,
+    get_comments,
+    delete_comment
+)
 
+from datetime import datetime
 
 
 BASE_PATH = (
@@ -114,6 +120,7 @@ def standardize(df):
         "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
         "ATLAS COPCO_NC": "ATLAS COPCO",
         "YANMAR ITALY": "YANMAR"
+    
     }
     df["customer_merge"] = (
         df["customer_merge"]
@@ -1402,7 +1409,79 @@ def render():
         compare_scenarios,
         selected_kpis
     )
+    st.divider()
 
+    st.header("Comments Test")
+
+    customer = st.selectbox(
+        "Customer",
+        sorted(
+            filtered_df["customer_merge"]
+            .dropna()
+            .unique()
+        )
+    )
+
+    user = st.selectbox(
+        "User",
+        [
+            "GELEN",
+            "VOLPE",
+            "SPERANZA",
+            "CASTALDO",
+            "BAGNOLI",
+            "DEL ROSSO",
+            "FERRETTI",
+            "PROVERBIO",
+            "PEZZETTI",
+            "TRINCANATO",
+            "CUFARI",
+            "CEPARANO"
+        ]
+    )
+
+    comment = st.text_area(
+        "Comment"
+    )
+
+    if st.button("Save Comment"):
+
+        add_comment(
+            customer=customer,
+            comment=comment,
+            user=user,
+            created_at=datetime.now().strftime(
+                "%Y-%m-%d %H:%M"
+            )
+        )
+
+        st.success("Comment saved")
+    comments = get_comments(customer)
+ 
+    for comment_id, user, created_at, comment in comments:
+
+        col1, col2 = st.columns([8, 1])
+
+        with col1:
+
+            st.write(
+                f"**{user}** | {created_at}"
+            )
+
+            st.write(comment)
+
+        with col2:
+
+            if st.button(
+                "🗑️",
+                key=f"del_{comment_id}"
+            ):
+
+                delete_comment(comment_id)
+
+                st.rerun()
+
+        st.divider()
 
 # =====================================================
 # START

@@ -65,6 +65,7 @@ def load_all():
             "SDF": "SAME DEUTZ-FAHR DEUTSCHLAND GMBH",
             "ATLAS COPCO_NC": "ATLAS COPCO",
             "YANMAR ITALY": "YANMAR"
+          
         })
 
         for c in ["units", "tn", "cogs", "vce", "sgm", "agm"]:

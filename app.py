@@ -7,6 +7,9 @@ from views.scenario_builder import render_scenario_builder
 from ui.sidebar import render_sidebar
 from views.wholegoods_page import render_wholegoods_page
 from views.month_comparison_dashboard import render_month_comparison_dashboard
+from services.comments_db import init_db
+from views.comments import render as render_comments
+init_db()
 
 try:
     from dotenv import load_dotenv
@@ -70,10 +73,12 @@ if not st.session_state["authenticated"]:
 # =========================
 pages = {
     "📊 Customer Overview": render_customer_overview,
+    "💬 Team Comments": render_comments,
     "🧪 Scenario Builder": render_scenario_builder,
     "📊 Unit Bridge": render_unit_bridge,
     "📊 Wholegoods Overview": render_wholegoods_page,
     "📊 Month Comparison Dashboard": render_month_comparison_dashboard
+    
 }
 
 selected_page = render_sidebar()

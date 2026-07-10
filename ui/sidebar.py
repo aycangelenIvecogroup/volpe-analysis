@@ -38,6 +38,10 @@ def render_sidebar():
             st.session_state.page = "📊 Month Comparison Dashboard"
         st.caption("Compare performance across months-bdg-fcst-ly")
 
+        if st.button("💬 Team Comments"):
+            st.session_state.page = "💬 Team Comments"
+        st.caption("View and add comments")
+        
         if st.button("📊 Customer Overview"):
             st.session_state.page = "📊 Customer Overview"
 
