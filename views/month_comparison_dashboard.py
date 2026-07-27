@@ -20,6 +20,7 @@ BASE_PATH = (
 MONTH_FILES = {
     "Apr-26": BASE_PATH / "c04_2026_clean.xlsx",
     "May-26": BASE_PATH / "c05_2026_clean.xlsx",
+    "Jun-26": BASE_PATH / "c06_2026_clean.xlsx",
 }
 
 REFERENCE_FILES = {
@@ -597,8 +598,8 @@ def render_filters(df):
     )
 
     default_base = (
-        "May-26"
-        if "May-26" in available_scenarios
+        "Jun-26"
+        if "Jun-26" in available_scenarios
         else available_scenarios[0]
     )
 

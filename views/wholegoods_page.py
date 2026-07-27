@@ -54,7 +54,7 @@ def load_wholegoods():
 
         return df
 
-    act = prep("c05_2026_clean.xlsx", "ACT")
+    act = prep("c06_2026_clean.xlsx", "ACT")
     fcs = prep("fcst1_2026_clean.xlsx", "FCS1")
 
     ly  = prep("LY25_clean.xlsx", "LY")

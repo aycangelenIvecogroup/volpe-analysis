@@ -40,7 +40,7 @@ def load_data():
 
         return df
 
-    act = pd.read_excel(BASE_PATH / "c05_2026_clean.xlsx")
+    act = pd.read_excel(BASE_PATH / "c06_2026_clean.xlsx")
     act = clean_cols(act)
 
     act = act.rename(columns={
