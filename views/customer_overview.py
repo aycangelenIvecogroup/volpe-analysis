@@ -553,6 +553,10 @@ def render_customer_overview():
 
     def create_donut(value, title):
 
+        if pd.isna(value) or np.isinf(value):
+            value = 0
+
+        value = float(value)
         value = max(0, min(value, 100))
 
         fig = go.Figure(
@@ -580,7 +584,8 @@ def render_customer_overview():
     with d1:
         st.plotly_chart(
             create_donut(tn_completion, "TN"),
-            use_container_width=True
+            use_container_width=True,
+            key="budget_tn"
         )
 
         st.caption(
@@ -591,7 +596,8 @@ def render_customer_overview():
     with d2:
         st.plotly_chart(
             create_donut(agm_completion, "AGM"),
-            use_container_width=True
+            use_container_width=True,
+            key="budget_agm"
         )
 
         st.caption(
@@ -602,8 +608,10 @@ def render_customer_overview():
     with d3:
         st.plotly_chart(
             create_donut(sgm_completion, "SGM"),
-            use_container_width=True
+            use_container_width=True,
+            key="budget_sgm"
         )
+        
 
         st.caption(
             f"Actual: {euro(pivot['sgm_ACT'].sum())} / "
@@ -613,8 +621,10 @@ def render_customer_overview():
     with d4:
         st.plotly_chart(
             create_donut(margin_completion, "Margin"),
-            use_container_width=True
+            use_container_width=True,
+            key="budget_margin"
         )
+        
 
         st.caption(
             f"Actual: {actual_margin:.1f}%"
@@ -624,8 +634,10 @@ def render_customer_overview():
     with d5:
         st.plotly_chart(
             create_donut(unit_completion, "Units"),
-            use_container_width=True
+            use_container_width=True,
+            key="budget_units"
         )
+        
 
         st.caption(
             f"Actual: {pivot['units_ACT'].sum():,} / "
@@ -675,7 +687,8 @@ def render_customer_overview():
     with f1:
         st.plotly_chart(
             create_donut(tn_fcs, "TN"),
-            use_container_width=True
+            use_container_width=True,
+            key="forecast_tn"
         )
 
         st.caption(
@@ -686,7 +699,8 @@ def render_customer_overview():
     with f2:
         st.plotly_chart(
             create_donut(agm_fcs, "AGM"),
-            use_container_width=True
+            use_container_width=True,
+            key="forecast_agm"
         )
 
         st.caption(
@@ -697,7 +711,8 @@ def render_customer_overview():
     with f3:
         st.plotly_chart(
             create_donut(sgm_fcs, "SGM"),
-            use_container_width=True
+            use_container_width=True,
+            key="forecast_sgm"
         )
 
         st.caption(
@@ -708,7 +723,8 @@ def render_customer_overview():
     with f4:
         st.plotly_chart(
             create_donut(margin_fcs, "Margin"),
-            use_container_width=True
+            use_container_width=True,
+            key="forecast_margin"
         )
 
         st.caption(
@@ -719,7 +735,8 @@ def render_customer_overview():
     with f5:
         st.plotly_chart(
             create_donut(unit_fcs, "Units"),
-            use_container_width=True
+            use_container_width=True,
+            key="forecast_units"
         )
 
         st.caption(
